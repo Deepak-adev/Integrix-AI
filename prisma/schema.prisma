@@ -1,0 +1,104 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model AdSubmission {
+  id                 String    @id @default(uuid())
+  submissionId       String?
+  filename           String
+  filePath           String
+  fileType           String
+  organisation       String    @default("NOVAWEAR")
+  publicationChannel String?
+  publicationDate    String?
+  sku                String?
+  campaignId         String?
+  extractedText      String    @db.Text
+  extractedData      Json?
+  overallStatus      String    @default("NEEDS_VERIFICATION")
+  findingsCount      Int       @default(0)
+  passCount          Int       @default(0)
+  failCount          Int       @default(0)
+  reviewCount        Int       @default(0)
+  createdAt          DateTime  @default(now())
+  findings           Finding[]
+}
+
+model Finding {
+  id                  String        @id @default(uuid())
+  submissionId        String
+  ruleId              String
+  policyName          String
+  status              String        // PASS, FAIL, NEEDS_VERIFICATION, NOT_FOUND, CONFLICTING, NOT_APPLICABLE
+  severity            String        // RED, AMBER, GREEN
+  observedValue       String        @db.Text
+  expectedValue       String        @db.Text
+  evidenceExcerpt     String        @db.Text
+  sourceFilename      String
+  sourceLocator       String
+  explanation         String        @db.Text
+  suggestedCorrection String        @db.Text
+  confidence          Float         @default(1.0)
+  createdAt           DateTime      @default(now())
+  submission          AdSubmission  @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model ProductRecord {
+  id                  String   @id @default(uuid())
+  sku                 String   @unique
+  productName         String
+  category            String
+  colour              String
+  composition         String
+  fit                 String
+  sizeRange           String
+  mrpInr              Float
+  sellingPriceInr     Float
+  approvedDescription String   @db.Text
+  approvedClaims      String   @db.Text
+  claimsNotApproved   String   @db.Text
+  careInstructions    String   @db.Text
+  status              String   @default("Active")
+  lastUpdated         String
+}
+
+model CampaignRecord {
+  id                 String   @id @default(uuid())
+  campaignId         String   @unique
+  sku                String
+  campaignName       String
+  campaignPriceInr   Float
+  startDate          String
+  endDate            String
+  eligibleChannels   String
+  conditions         String   @db.Text
+  approvalStatus     String   // Approved, Pending, Expired
+  approver           String
+}
+
+model RuleRecord {
+  id                  String   @id @default(uuid())
+  ruleId              String   @unique
+  organisationId      String   @default("ORG-NW")
+  ruleVersion         String   @default("0.1")
+  ruleName            String
+  ruleFamily          String
+  category            String
+  inputComponentId    String
+  policyStatement     String   @db.Text
+  validationLogic     String   @db.Text
+  exceptionLogic      String?  @db.Text
+  errorMessage        String   @db.Text
+  correctionMessage   String   @db.Text
+  sourceId            String
+  sourceLocator       String
+  severity            String
+  engine              String
+  ruleStatus          String   @default("DRAFT")
+}
+

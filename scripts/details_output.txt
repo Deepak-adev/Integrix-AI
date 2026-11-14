@@ -1,0 +1,2248 @@
+====================================
+1. INTEGRIX RULEBOOK SCHEMA - ALL SHEETS
+====================================
+
+--- Sheet: Read Me ---
+Row 0: ["INTEGRIX AI – EXECUTABLE RULEBOOK SCHEMA",""]
+Row 1: ["Version","0.1 – Draft schema"]
+Row 2: ["Purpose","A common, organisation-configurable structure for converting approved policy records into executable content-audit rules."]
+Row 3: ["Design principle","Common rule structure + organisation-specific rule data. The engine is shared; policy parameters, sources, exceptions and rules vary by organisation and sector."]
+Row 4: ["Important boundary","This workbook is a schema and illustrative NOVAWEAR draft. It is not a deployed engine, and its sample rules must not be treated as approved policies."]
+Row 5: ["Source inspiration","ACR v2.1: configurable parameters and rule matrix. T-CELL RULES: component references, validation logic, exception logic, error/correction messages, authority, severity, reasoning and positive/negative examples."]
+Row 6: ["Recommended processing","Repository ingestion → source-grounded policy draft → human verification → rule compilation → rule approval → activation → content audit → findings and human decision."]
+Row 7: ["Core tabs","Rule Registry; Parameter Config; Exception Registry; Finding Outcomes; Field Dictionary; Rule Lifecycle."]
+Row 8: ["Critical safeguards","No invented facts; trace every rule to source; preserve exceptions; distinguish confidence from severity; version rules; keep drafts inactive; escalate ambiguity and conflicts."]
+Row 9: ["Multi-tenant note","Organisation ID scopes every rule and parameter. Do not let one organisation's rule or exception affect another organisation."]
+Row 10: ["Sector extension","Use Rule Family and Category plus flexible metadata/extension fields in the implementation. Do not hard-code every possible sector field into one universal form."]
+Row 11: ["Next prerequisite","Prepare representative sample advertisements/content submissions and expected outcomes to test the rule design on paper before implementation."]
+
+--- Sheet: Rule Registry ---
+Row 0: ["Rule ID","Organisation ID","Rule Version","Rule Name","Rule Family","Category","Input Component ID","Input Component Name","Reference Component IDs","Policy Statement","Validation Logic","Exception Logic","Error Message","Correction Message","Authority / Source ID","Source Locator","Severity (RAG)","Engine","Execution Mode","Required Inputs","Pass Criteria","Fail Criteria","Review Required","Rule Status","Effective From","Effective To","Confidence Threshold","Step-by-Step Reasoning","Bad Trigger Example","Good / Passing Example","Test Case ID","Owner / Approver","Last Reviewed"]
+Row 1: ["NW-RULE-001","ORG-NW","0.1","SKU fabric composition match","FACT","Product information","CONTENT-PRODUCT-COMPOSITION","Fabric composition claim","NW-SKU-FACTS","Any fabric composition claim must match the approved composition for the stated SKU.","Extract SKU and composition claim; retrieve approved composition for SKU; normalise equivalent expressions; compare fibre names and percentages.","If SKU cannot be resolved, mark NEEDS_VERIFICATION; do not infer SKU from image alone.","Fabric composition does not match the approved product record.","Replace the composition statement with the approved composition for this SKU, or remove the claim.","SRC-NW-005","Product Catalogue sheet; matching SKU row","RED","Deterministic","Pre-publication","SKU; composition claim; current catalogue record","Claim and catalogue composition match exactly after safe normalisation.","Any fibre or percentage mismatch, or unsupported absolute composition.","Yes","DRAFT","","",0.95,"Resolve SKU → fetch current approved product facts → parse composition → compare fibre percentages → return evidence and mismatch.","NW-CS-002 described as '100% cotton'.","NW-CS-002 described as '60% cotton, 40% polyester'.","TC-NW-001","Product Data Owner",""]
+Row 2: ["NW-RULE-002","ORG-NW","0.1","Campaign price validity","PRICE","Commerce / pricing","CONTENT-PRICE","Displayed offer price","NW-CAMPAIGN-RECORDS; NW-SKU-FACTS","A campaign price may be used only when an approved campaign matches SKU, date, channel and conditions.","Match campaign ID or SKU; check status=Approved; validate publication date within start/end; validate channel; compare displayed price and required conditions.","Pending, expired, future, wrong-channel or wrong-SKU campaigns cannot authorise the price; ambiguous match requires human review.","The displayed offer is not supported by an active approved campaign record.","Use the current approved base price or correct the offer details and conditions.","SRC-NW-005","Campaign Offers sheet; matching campaign row","RED","Deterministic","Pre-publication","SKU; displayed price; publication date; channel; campaign status; campaign conditions","All campaign attributes match an approved record.","Any mismatch or campaign status other than Approved.","Yes","DRAFT","","",1,"Resolve SKU → locate campaign → check approval status → check dates → check channel → compare price and mandatory conditions.","Use CMP-26-021 ₹1,399 while its status is Pending.","Use CMP-26-018 ₹599 for NW-TS-003 during its approved period and channel.","TC-NW-002","Commercial Owner",""]
+Row 3: ["NW-RULE-003","ORG-NW","0.1","Unsupported performance claim","CLAIM","Claims and substantiation","CONTENT-CLAIM","Product performance claim","NW-CLAIM-EVIDENCE","Performance claims must have current product-specific substantiation and approval.","Identify performance claim; locate evidence record linked to exact SKU and claim; verify evidence status and approval.","If claim meaning is ambiguous, return NEEDS_VERIFICATION rather than automatically failing; general category evidence is not sufficient for SKU-specific claims.","This performance claim has no linked approved supporting evidence.","Remove or qualify the claim, or submit product-specific evidence for review.","SRC-NW-003","Product and performance claims section","AMBER","Semantic + Evidence Lookup","Pre-publication","Claim text; SKU; evidence repository; approval status","Relevant current evidence exists and is approved for this SKU and claim.","No evidence, expired evidence, wrong SKU, or unapproved evidence.","Yes","DRAFT","","",0.8,"Detect claim → identify claim type → resolve SKU → retrieve evidence → validate scope/date/approval → produce traceable finding.","'Wrinkle-proof' used without supporting evidence.","A factual material statement matching the approved catalogue record.","TC-NW-003","Marketing Compliance Owner",""]
+Row 4: ["NW-RULE-004","ORG-NW","0.1","Delivery estimate not stated as guarantee","SERVICE","Customer information","CONTENT-DELIVERY","Delivery or dispatch statement","NW-SERVICE-FACTS","Operational dispatch estimates must not be presented as guaranteed delivery dates.","Detect delivery/dispatch language; compare modal certainty and guarantee terms against approved service facts.","A formally approved, region- and service-specific guarantee may be allowed if its source and validity are recorded.","Delivery wording may imply a guarantee not supported by the service policy.","Use the approved dispatch estimate and clearly distinguish it from delivery timing.","SRC-NW-004","Delivery and fulfilment section","AMBER","Semantic","Pre-publication","Content text; service facts; region/service context if relevant","Wording accurately describes an estimate and does not promise a delivery date.","Unsupported guaranteed delivery promise.","Yes","DRAFT","","",0.85,"Find delivery statement → classify estimate vs promise → compare to source wording → check for applicable approved exception.","'Delivered tomorrow, guaranteed' without an approved guarantee.","'Orders are generally handed to the carrier within 1–2 business days.'","TC-NW-004","Operations Owner",""]
+Row 5: ["NW-RULE-005","ORG-NW","0.1","Approved logo asset and visual integrity","VISUAL","Visual identity","CONTENT-LOGO","Logo / brand asset","NW-BRAND-ASSETS; NW-VISUAL-STANDARDS","Use approved logo assets without prohibited distortion or alteration.","Identify logo region; compare against approved logo references; assess aspect ratio, rotation, effects and background variant.","If image quality or logo visibility is insufficient, return NEEDS_VERIFICATION; do not infer a violation from low-resolution previews.","The logo appears altered or does not match an approved asset.","Replace with the approved logo variant and preserve its proportions and clear space.","SRC-NW-001; SRC-NW-006","Logo use section; Brand_Assets","AMBER","Vision","Pre-publication","Submitted image; approved logo assets; placement/background context","Logo matches an approved asset and meets configured visual constraints.","Detected distortion, unapproved effects or wrong variant with adequate confidence.","Yes","DRAFT","","",0.8,"Locate logo → compare asset identity → inspect transform/effects → assess background suitability → attach visual evidence.","Stretched navy logo on a dark background.","Approved reverse logo on a suitable dark background.","TC-NW-005","Brand Design Owner",""]
+
+--- Sheet: Parameter Config ---
+Row 0: ["Parameter ID","Organisation ID","Parameter Name","Data Type","Configured Value","Unit / Format","Scope","Source ID","Source Locator","Effective From","Effective To","Approval Status","Notes"]
+Row 1: ["NW-PAR-001","ORG-NW","Minimum logo width","integer",120,"px","Digital logo use","SRC-NW-001","Logo use","","","DRAFT","Illustrative parameter; verify source wording and asset context."]
+Row 2: ["NW-PAR-002","ORG-NW","Logo clear-space multiplier","decimal",1,"× letter N height","Full wordmark","SRC-NW-001","Logo use","","","DRAFT","Clear space equals height of letter N."]
+Row 3: ["NW-PAR-003","ORG-NW","Dispatch handover lower bound","integer",1,"business days","General operations","SRC-NW-002; SRC-NW-004","Operational facts","","","DRAFT","Not a delivery guarantee."]
+Row 4: ["NW-PAR-004","ORG-NW","Dispatch handover upper bound","integer",2,"business days","General operations","SRC-NW-002; SRC-NW-004","Operational facts","","","DRAFT","Not a delivery guarantee."]
+
+--- Sheet: Exception Registry ---
+Row 0: ["Exception ID","Rule ID","Exception Condition","Required Evidence / Context","Decision Effect","Approval Required","Authority / Source ID","Status","Expiry / Review Date"]
+Row 1: ["NW-EX-001","NW-RULE-002","Campaign record is approved and all SKU/date/channel/price conditions match.","Approved campaign row and publication timestamp.","Permit campaign price for matching scope only.","Yes","SRC-NW-005","DRAFT",""]
+Row 2: ["NW-EX-002","NW-RULE-004","A specific delivery guarantee has been formally approved for the relevant service and region.","Approved service policy and effective dates.","Permit only exact approved wording and scope.","Yes","SRC-NW-004","DRAFT",""]
+Row 3: ["NW-EX-003","NW-RULE-005","Logo is too small or low-resolution for reliable visual comparison.","Original-resolution asset or human review.","Return NEEDS_VERIFICATION; do not auto-fail.","No","SRC-NW-001; SRC-NW-006","DRAFT",""]
+
+--- Sheet: Finding Outcomes ---
+Row 0: ["Outcome Code","Meaning","System Behaviour","Can block publication?","Human action"]
+Row 1: ["PASS","Rule satisfied with adequate evidence.","Record check, source and timestamp.","No","No action unless policy requires sampling."]
+Row 2: ["FAIL","Rule violated with adequate evidence.","Create finding with evidence, severity and correction.","According to approved severity","Review and correct content."]
+Row 3: ["NEEDS_VERIFICATION","Evidence or context is insufficient or ambiguous.","Do not invent a conclusion; route to reviewer.","No automatic block unless configured","Reviewer resolves ambiguity."]
+Row 4: ["NOT_APPLICABLE","Rule does not apply to this content or scope.","Record reason and scope.","No","No action."]
+Row 5: ["NOT_FOUND","Required source fact or evidence was not located.","Identify missing source; do not treat absence as proof of violation.","No automatic block","Provide source or remove claim."]
+Row 6: ["CONFLICTING","Two authoritative sources disagree.","Preserve both references and escalate.","No automatic block","Policy owner resolves source conflict."]
+Row 7: ["EXEMPTED","A valid approved exception applies.","Record exception ID, scope and expiry.","No","Check exception remains valid."]
+
+--- Sheet: Field Dictionary ---
+Row 0: ["Field","Definition","Required?","Example / guidance"]
+Row 1: ["Rule ID","Unique stable identifier for a rule within the organisation.","Yes","NW-RULE-001"]
+Row 2: ["Organisation ID","Tenant/organisation owning the rule.","Yes","ORG-NW"]
+Row 3: ["Rule Version","Version of this rule definition.","Yes","0.1"]
+Row 4: ["Rule Family","Broad validation family.","Yes","FACT, PRICE, CLAIM, SERVICE, VISUAL, RELATIONSHIP, DOCUMENT"]
+Row 5: ["Category","Business/policy category.","Yes","Commerce, Brand, Product information"]
+Row 6: ["Input Component ID","Stable ID for the content component being checked.","Yes","CONTENT-PRICE"]
+Row 7: ["Reference Component IDs","IDs of source facts, policies or assets used by the rule.","When applicable","NW-SKU-FACTS"]
+Row 8: ["Validation Logic","Human-readable and/or machine-executable check definition.","Yes","Pseudocode, expression, model task or service reference"]
+Row 9: ["Exception Logic","Conditions that alter normal rule outcome.","Yes","Approved campaign; documented exception"]
+Row 10: ["Severity (RAG)","Impact level after policy owner approval.","Yes","RED / AMBER / GREEN; define organisation-wide meaning"]
+Row 11: ["Engine","Execution capability used.","Yes","Deterministic, Semantic, Vision, Evidence Lookup, Human"]
+Row 12: ["Execution Mode","When and how rule runs.","Yes","Pre-publication; on-demand; scheduled"]
+Row 13: ["Required Inputs","Data needed to evaluate the rule.","Yes","SKU, content, publication date"]
+Row 14: ["Pass / Fail Criteria","Explicit criteria for each result.","Yes","Avoid vague instructions such as 'looks compliant'"]
+Row 15: ["Review Required","Whether a human must review result or exceptions.","Yes","Yes / No"]
+Row 16: ["Rule Status","Lifecycle state.","Yes","DRAFT, IN_REVIEW, APPROVED, ACTIVE, SUSPENDED, RETIRED"]
+Row 17: ["Source Locator","Precise trace to page, section, sheet, row or asset.","Yes","Workbook sheet and SKU row"]
+Row 18: ["Confidence Threshold","Minimum model confidence for automated decision, if relevant.","Conditional","Use NEEDS_VERIFICATION below threshold."]
+
+--- Sheet: Rule Lifecycle ---
+Row 0: ["State","Description","Allowed transition","Control"]
+Row 1: ["DRAFT","Generated or authored; not approved.","IN_REVIEW or RETIRED","Cannot execute as an enforcement rule."]
+Row 2: ["IN_REVIEW","Awaiting policy owner review.","APPROVED, DRAFT or RETIRED","Reviewer checks source, scope, logic, exceptions and examples."]
+Row 3: ["APPROVED","Authorised by designated owner.","ACTIVE or SUSPENDED","Approval identity and timestamp required."]
+Row 4: ["ACTIVE","Eligible for execution in its effective scope.","SUSPENDED or RETIRED","Version and effective dates must be enforced."]
+Row 5: ["SUSPENDED","Temporarily disabled.","ACTIVE or RETIRED","Retain audit history; do not delete."]
+Row 6: ["RETIRED","No longer used for new audits.","None","Preserve for historical audit reproducibility."]
+
+====================================
+2. EXPECTED AUDIT RESULTS DOCX
+====================================
+NOVAWEAREXPECTED AUDIT RESULTS
+
+Reference oracle for the seven Integrix AI advertisement test fixtures
+
+Purpose: Use this document to compare the reports produced by the future Integrix AI application against the expected findings. This is a test reference, not a report generated by a functioning system.
+
+Important test limitation: The current visual creatives are preliminary crops from generated collages. Some visible copy or product presentation may not match the structured NOVAWEAR repository exactly. Use the submission context below as the authoritative test input and record any mismatch between the image and the structured metadata.
+
+1. Test execution rules
+
+Run one advertisement per submission. Record the exact image file, organisation, channel, SKU and intended publication date.
+
+Use the NOVAWEAR Master Brand Repository and approved/draft policy records as the only source of truth for this demo.
+
+Do not accept a price merely because an advertisement displays it. Check SKU, base price, campaign approval status, validity dates, channel and offer conditions.
+
+Do not treat a missing evidence file as proof that the claim is false. Return NOT_FOUND or NEEDS_VERIFICATION when the repository is incomplete.
+
+Every finding should cite the relevant policy/rule and source locator. A correction must not introduce a new unsupported claim.
+
+All test rules are draft design rules. Human review remains the final publication decision.
+
+2. Expected outcome summary
+
+Ad ID
+
+Scenario
+
+SKU / scope
+
+Key evidence
+
+Expected
+
+Rule
+
+Severity
+
+AD-NW-001
+
+Price mismatch
+
+NW-CS-001
+
+₹999; base ₹1,299
+
+FAIL
+
+NW-RULE-002
+
+RED
+
+AD-NW-002
+
+Fabric composition mismatch
+
+NW-CS-002
+
+Claim 100% cotton; approved 60% cotton / 40% polyester
+
+FAIL
+
+NW-RULE-001
+
+RED
+
+AD-NW-003
+
+Approved campaign
+
+NW-TS-003
+
+₹599; CMP-26-018; 1–15 Nov 2026; website + Instagram Shop; selected sizes
+
+PASS*
+
+NW-RULE-002
+
+GREEN
+
+AD-NW-004
+
+Campaign pending approval
+
+NW-TR-005
+
+₹1,399; CMP-26-021 status Pending
+
+FAIL / REVIEW
+
+NW-RULE-002
+
+RED
+
+AD-NW-005
+
+Wrinkle-proof claim
+
+NW-CS-001
+
+No product-specific evidence supplied in repository
+
+NEEDS_VERIFICATION / FAIL**
+
+NW-RULE-003
+
+AMBER
+
+AD-NW-006
+
+Guaranteed next-day delivery
+
+General service
+
+Repository supports carrier handover in 1–2 business days, not delivery guarantee
+
+FAIL
+
+NW-RULE-004
+
+AMBER
+
+AD-NW-007
+
+Compliant product advertisement
+
+NW-CS-001
+
+100% cotton; regular fit; base price ₹1,299
+
+PASS*
+
+NW-RULE-001 + base-price check
+
+GREEN
+
+
+
+3. Detailed expected findings
+
+AD-NW-001 – Price mismatch
+
+Expected result: FAIL
+
+Reason: Displayed price ₹999 does not match the NW-CS-001 base selling price of ₹1,299. The supplied campaign CMP-26-014 ended on 31 Oct 2026 and does not authorise this price on 13 Nov 2026.
+
+Evidence to cite: NW-RULE-002; 05_Product_Catalogue_and_Campaigns.xlsx → Product Catalogue and Campaign Offers.
+
+Suggested correction / action: Update the displayed price to ₹1,299 or provide a valid approved campaign record matching SKU, date, channel, price and conditions.
+
+Review boundary: Do not infer a discount from a crossed-out price or expired campaign.
+
+AD-NW-002 – Fabric composition mismatch
+
+Expected result: FAIL
+
+Reason: The advertisement states 100% cotton for NW-CS-002. The catalogue records 60% cotton and 40% polyester.
+
+Evidence to cite: NW-RULE-001; 05_Product_Catalogue_and_Campaigns.xlsx → Product Catalogue → NW-CS-002 row.
+
+Suggested correction / action: Replace the claim with the exact approved composition: 60% cotton, 40% polyester.
+
+Review boundary: Do not transfer the composition of another SKU.
+
+AD-NW-003 – Approved campaign
+
+Expected result: PASS*
+
+Reason: CMP-26-018 authorises ₹599 for NW-TS-003 from 1–15 Nov 2026 on NOVAWEAR website and Instagram Shop, selected sizes only, with price shown at checkout.
+
+Evidence to cite: NW-RULE-002; 05_Product_Catalogue_and_Campaigns.xlsx → Campaign Offers → CMP-26-018.
+
+Suggested correction / action: No correction if the SKU/size/channel/date match and all conditions remain visible.
+
+Review boundary: *PASS is conditional: validate the actual selected size and publication timestamp. If either is missing, return NEEDS_VERIFICATION rather than unconditional PASS.
+
+AD-NW-004 – Campaign pending approval
+
+Expected result: FAIL / REVIEW
+
+Reason: CMP-26-021 is Pending. Its date range does not make it an approved campaign. It cannot authorise the ₹1,399 campaign price.
+
+Evidence to cite: NW-RULE-002; 05_Product_Catalogue_and_Campaigns.xlsx → Campaign Offers → CMP-26-021.
+
+Suggested correction / action: Do not publish the offer until the authorised commercial owner approves it. Otherwise use the current approved base price.
+
+Review boundary: Do not treat Pending as Approved. Escalate to the campaign approver.
+
+AD-NW-005 – Wrinkle-proof claim
+
+Expected result: NEEDS_VERIFICATION / FAIL**
+
+Reason: The marketing policy requires substantiation for product performance claims. No current product-specific wrinkle-resistance evidence is included in the supplied repository.
+
+Evidence to cite: NW-RULE-003; 03_Marketing_and_Communication_Policy.pdf → Product and performance claims; evidence repository search.
+
+Suggested correction / action: Provide approved evidence linked to NW-CS-001 or remove/qualify the claim.
+
+Review boundary: **If the system only knows the supplied repository, it should state NOT_FOUND / NEEDS_VERIFICATION. It may produce FAIL only if policy defines unsupported claims as prohibited after evidence review. Absence in this repository is not proof that evidence does not exist elsewhere.
+
+AD-NW-006 – Guaranteed next-day delivery
+
+Expected result: FAIL
+
+Reason: The statement promises guaranteed next-day delivery. The repository only supports general handover to the carrier within 1–2 business days; this is not a guaranteed delivery date.
+
+Evidence to cite: NW-RULE-004; 02_Company_Profile.pdf and 04_Product_and_Customer_Information_Policy.pdf → delivery / fulfilment statements.
+
+Suggested correction / action: Replace with the approved dispatch estimate and clearly distinguish dispatch from delivery.
+
+Review boundary: If a region- and service-specific approved guarantee exists, route it through the exception workflow before deciding.
+
+AD-NW-007 – Compliant product advertisement
+
+Expected result: PASS*
+
+Reason: The submitted test context states NW-CS-001 is 100% cotton, regular fit and ₹1,299, matching the catalogue record.
+
+Evidence to cite: NW-RULE-001 and base-price comparison; 05_Product_Catalogue_and_Campaigns.xlsx → Product Catalogue → NW-CS-001 row.
+
+Suggested correction / action: No correction required if the creative contains no additional unverified claims and the current catalogue version is used.
+
+Review boundary: *PASS is limited to the stated facts. Any additional visual or textual claims must be checked independently.
+
+4. Minimum report fields expected from Integrix AI
+
+Field
+
+Expected content
+
+Submission ID
+
+AD-NW-00X and uploaded file name
+
+Overall status
+
+PASS / FAIL / NEEDS_VERIFICATION / REVIEW REQUIRED
+
+Finding ID
+
+Unique ID for each detected issue
+
+Rule ID and policy
+
+Rule and policy statement that support the finding
+
+Severity
+
+Organisation-approved severity; not model confidence
+
+Observed content
+
+Exact text/visual detail detected
+
+Expected / source value
+
+Authoritative repository value
+
+Evidence trace
+
+Source file plus sheet/page/row/section where available
+
+Reasoning
+
+Short, auditable explanation of comparison
+
+Suggested correction
+
+Specific correction without inventing facts
+
+Confidence
+
+Model confidence kept separate from severity
+
+Human decision
+
+Approve, reject, edit, exempt or request evidence
+
+Audit metadata
+
+Organisation, timestamp, rule version, policy version and model version
+
+
+
+5. Scoring the system output
+
+Evaluation dimension
+
+Pass condition
+
+Detection
+
+Correct issue is detected; no unrelated issue invented.
+
+Source accuracy
+
+Cited source actually supports the finding.
+
+Rule mapping
+
+Correct rule ID and policy family are used.
+
+Outcome calibration
+
+PASS/FAIL/NEEDS_VERIFICATION matches the expected logic and uncertainty.
+
+Correction quality
+
+Suggestion is actionable and stays within approved facts.
+
+Traceability
+
+Reviewer can reproduce why the finding was raised.
+
+Human governance
+
+Ambiguous or exception-dependent cases are routed to review.
+
+
+
+6. Sign-off
+
+Reviewer
+
+Role
+
+Decision
+
+Comments
+
+Date
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+====================================
+3. GENERATED POLICY PROFILE DRAFT DOCX
+====================================
+NOVAWEARGENERATED POLICY PROFILE
+
+Organisation-specific brand and content governance profile
+
+Profile status: DRAFT – pending administrator verification.
+
+Basis: Prepared as a worked example using the NOVAWEAR Master Brand Repository created for the Integrix AI demonstration. Source references below point to the named source documents; page references should be confirmed against the final repository files during implementation.
+
+Important: This is not an active executable rulebook. No policy in this document should be enforced until an authorised NOVAWEAR administrator verifies and approves it.
+
+Document control
+
+Field
+
+Value
+
+Policy Profile ID
+
+ORG-NW-POLICY-001
+
+Organisation
+
+NovaWear Retail Private Limited (fictional demonstration entity)
+
+Trading name
+
+NOVAWEAR
+
+Industry / domain
+
+Indian online apparel retail / e-commerce
+
+Profile version
+
+0.1 – initial draft
+
+Source repository
+
+NOVAWEAR Master Brand Repository
+
+Profile status
+
+Draft – In review
+
+Prepared by
+
+Integrix AI (illustrative generated output)
+
+Policy owner
+
+Brand and Creative Lead; functional owners for their respective areas
+
+Approver(s)
+
+Authorised NOVAWEAR administrator (not yet assigned)
+
+Effective date
+
+Not active until approval
+
+
+
+1. Organisation profile
+
+Attribute
+
+Extracted value
+
+Source
+
+Legal entity
+
+NovaWear Retail Private Limited
+
+02_Company_Profile.pdf – Business details
+
+Trading name
+
+NOVAWEAR
+
+02_Company_Profile.pdf – Business details
+
+Head office
+
+Chennai, Tamil Nadu, India
+
+02_Company_Profile.pdf – Business details
+
+Business model
+
+Online retail; direct-to-consumer and selected marketplaces
+
+02_Company_Profile.pdf – Business details
+
+Products
+
+Shirts, T-shirts, trousers and lightweight overshirts
+
+02_Company_Profile.pdf – What we sell; Product Catalogue
+
+Primary audience
+
+Adults shopping for practical casual clothing for everyday use
+
+01_Brand_Guidelines.pdf – About this guide
+
+Channels
+
+NOVAWEAR online storefront and selected third-party marketplaces; campaign records may identify additional channels
+
+02_Company_Profile.pdf; 05_Product_Catalogue_and_Campaigns.xlsx
+
+Support hours
+
+Monday–Saturday, 9:30 AM–6:00 PM IST, excluding public holidays
+
+02_Company_Profile.pdf – Business details
+
+
+
+2. Brand identity and visual policies
+
+Policy ID
+
+Draft policy statement
+
+Parameters / scope
+
+Source
+
+Status
+
+NW-POL-BRD-001
+
+Use the approved NOVAWEAR brand name in customer-facing material.
+
+Formal lock-up: NOVAWEAR; running copy may use NovaWear only where sentence case is required.
+
+01_Brand_Guidelines.pdf – Brand identity
+
+Needs verification
+
+NW-POL-VIS-001
+
+Use only supplied master logo files; do not stretch, rotate, outline, shadow or recreate the logo.
+
+Navy logo on light backgrounds; reverse white logo on approved dark backgrounds.
+
+01_Brand_Guidelines.pdf – Logo use; Brand_Assets
+
+Needs verification
+
+NW-POL-VIS-002
+
+Maintain clear space around the logo equal to the height of the letter N.
+
+Applies to full wordmark.
+
+01_Brand_Guidelines.pdf – Logo use
+
+Needs verification
+
+NW-POL-VIS-003
+
+Maintain a minimum digital width of 120 px for the full wordmark.
+
+Use approved NW monogram asset if placement is too small; do not create a new monogram.
+
+01_Brand_Guidelines.pdf – Logo use
+
+Needs verification
+
+NW-POL-COL-001
+
+Use the approved digital colour palette; do not substitute colours by visual approximation.
+
+NOVA Navy #172B4D; Slate Blue #315B7D; Warm Sand #E9E1D5; Rust #C66A3D; Cloud #F4F6F8; Ink #202833.
+
+01_Brand_Guidelines.pdf – Colour palette; Brand_Assets/Colour_Reference.txt
+
+Needs verification
+
+NW-POL-TYP-001
+
+Use Inter for digital layouts; Arial is permitted where Inter is unavailable in partner platforms or office documents.
+
+Headlines sentence case; avoid decorative scripts and all-caps paragraphs.
+
+01_Brand_Guidelines.pdf – Typography and layout
+
+Needs verification
+
+NW-POL-IMG-001
+
+Product imagery must represent the product accurately; filters must not materially change garment colour.
+
+Applies to product photography and campaign imagery.
+
+01_Brand_Guidelines.pdf – Photography and product presentation
+
+Needs verification
+
+
+
+3. Brand voice and terminology
+
+Policy ID
+
+Draft policy statement
+
+Examples / parameters
+
+Source
+
+Status
+
+NW-POL-VOI-001
+
+Use a clear, helpful, practical and unpretentious retail voice.
+
+Personality: practical, modern, calm, helpful and unpretentious.
+
+01_Brand_Guidelines.pdf – Brand identity / Brand voice
+
+Needs verification
+
+NW-POL-VOI-002
+
+Avoid exaggerated or transformative promotional language.
+
+Avoid: luxury, revolutionary, life-changing, guaranteed, 'fashion that transforms you'.
+
+01_Brand_Guidelines.pdf – Brand identity / Brand voice
+
+Needs verification
+
+NW-POL-TER-001
+
+Use product names and fit labels exactly as recorded in the current catalogue.
+
+Examples: Classic Cotton Shirt; regular fit; relaxed fit; slim straight fit.
+
+01_Brand_Guidelines.pdf – Naming and terminology; 05_Product_Catalogue_and_Campaigns.xlsx
+
+Needs verification
+
+NW-POL-TER-002
+
+Use '100% cotton' only for a SKU whose approved composition is 100% cotton.
+
+Composition is SKU-specific; do not transfer claims between products.
+
+01_Brand_Guidelines.pdf – Naming and terminology; 05_Product_Catalogue_and_Campaigns.xlsx
+
+Needs verification
+
+
+
+4. Product and commercial facts
+
+SKU / fact
+
+Approved repository value
+
+Source
+
+Notes
+
+NW-CS-001 – Classic Cotton Shirt
+
+100% cotton; regular fit; MRP ₹1,799; base selling price ₹1,299
+
+05_Product_Catalogue_and_Campaigns.xlsx – Product Catalogue
+
+Campaign price must be checked separately.
+
+NW-CS-002 – Everyday Oxford Shirt
+
+60% cotton, 40% polyester; regular fit; MRP ₹1,599; selling price ₹1,199
+
+05_Product_Catalogue_and_Campaigns.xlsx – Product Catalogue
+
+Do not describe as 100% cotton.
+
+NW-TS-003 – Core Crew T-Shirt
+
+95% cotton, 5% elastane; regular fit; MRP ₹899; selling price ₹649
+
+05_Product_Catalogue_and_Campaigns.xlsx – Product Catalogue
+
+Campaign record may override price for defined period and channels.
+
+NW-TR-005 – Everyday Chino
+
+98% cotton, 2% elastane; slim straight fit; MRP ₹1,899; selling price ₹1,499
+
+05_Product_Catalogue_and_Campaigns.xlsx – Product Catalogue
+
+Do not describe as 100% cotton.
+
+Dispatch target
+
+Orders are generally handed to carrier within 1–2 business days; not a guaranteed delivery date.
+
+02_Company_Profile.pdf – Operational facts; 04_Product_and_Customer_Information_Policy.pdf
+
+Do not convert target into guarantee.
+
+Returns
+
+Eligible items may be returned within 7 days of delivery, subject to conditions and exclusions.
+
+02_Company_Profile.pdf; 04_Product_and_Customer_Information_Policy.pdf
+
+Refer to live Returns Policy for exclusions.
+
+
+
+5. Campaign pricing and exception records
+
+Campaign ID
+
+SKU
+
+Approved campaign terms
+
+Validity / channel
+
+Approval status
+
+CMP-26-014
+
+NW-CS-001
+
+Campaign price ₹1,199; one unit per customer; while campaign stock lasts.
+
+15–31 Oct 2026; NOVAWEAR website
+
+Approved in source workbook
+
+CMP-26-018
+
+NW-TS-003
+
+Campaign price ₹599; selected sizes only; price shown at checkout.
+
+1–15 Nov 2026; NOVAWEAR website and Instagram Shop
+
+Approved in source workbook
+
+CMP-26-021
+
+NW-TR-005
+
+Campaign price ₹1,399; not combinable with other coupon codes.
+
+10–20 Nov 2026; NOVAWEAR website
+
+Pending – must not be treated as approved
+
+
+
+Draft interpretation. The audit engine should apply a campaign price only when the campaign is approved, the SKU matches, the publication date falls within the campaign period, and the channel and conditions match. Otherwise, compare against the current base selling price and flag for review where appropriate.
+
+6. Claims and substantiation
+
+Claim ID
+
+Claim / restriction
+
+Scope
+
+Source
+
+Status
+
+NW-POL-CLM-001
+
+Fabric composition claims must match the SKU's approved composition.
+
+All product descriptions and advertisements.
+
+05_Product_Catalogue_and_Campaigns.xlsx; 03_Marketing_and_Communication_Policy.pdf
+
+Needs verification
+
+NW-POL-CLM-002
+
+Durability claims require product-specific test results or documented substantiation.
+
+Specific product only.
+
+03_Marketing_and_Communication_Policy.pdf – Product and performance claims
+
+Needs verification
+
+NW-POL-CLM-003
+
+Skin-friendly or hypoallergenic claims require product-specific evidence and written approval.
+
+Specific product only.
+
+03_Marketing_and_Communication_Policy.pdf
+
+Needs verification
+
+NW-POL-CLM-004
+
+Sustainable, eco-friendly or organic claims require a defined attribute, supplier documentation and approval.
+
+Specific product only; not entire range by default.
+
+03_Marketing_and_Communication_Policy.pdf
+
+Needs verification
+
+NW-POL-CLM-005
+
+Do not use 'India's largest', 'number one' or similar leadership claims without current, independently supportable basis and written approval.
+
+Organisation-level promotional claims.
+
+02_Company_Profile.pdf – Claims requiring substantiation
+
+Needs verification
+
+
+
+7. Marketing restrictions and disclosures
+
+Policy ID
+
+Draft requirement
+
+Source
+
+Status
+
+NW-POL-MKT-001
+
+Promotional claims must be supported by current campaign or product information.
+
+03_Marketing_and_Communication_Policy.pdf
+
+Needs verification
+
+NW-POL-MKT-002
+
+Do not present standard dispatch or delivery estimates as guaranteed delivery dates.
+
+02_Company_Profile.pdf; 04_Product_and_Customer_Information_Policy.pdf
+
+Needs verification
+
+NW-POL-MKT-003
+
+Do not make disparaging comparisons with named competitors.
+
+03_Marketing_and_Communication_Policy.pdf
+
+Needs verification
+
+NW-POL-MKT-004
+
+Use genuine customer reviews and testimonials with permission; do not change their meaning.
+
+03_Marketing_and_Communication_Policy.pdf
+
+Needs verification
+
+NW-POL-MKT-005
+
+Material offer conditions, validity dates, exclusions and sponsorship disclosures must be readable and included where relevant.
+
+03_Marketing_and_Communication_Policy.pdf
+
+Needs verification
+
+
+
+8. Privacy and customer information
+
+Policy ID
+
+Draft requirement
+
+Source
+
+Status
+
+NW-POL-PRV-001
+
+Do not include customer names, phone numbers, addresses, order numbers or support screenshots in marketing material without documented permission and a clear business purpose.
+
+04_Product_and_Customer_Information_Policy.pdf – Customer information and privacy
+
+Needs verification
+
+NW-POL-PRV-002
+
+Anonymise support screenshots before sharing outside the support team.
+
+04_Product_and_Customer_Information_Policy.pdf
+
+Needs verification
+
+
+
+9. Source register
+
+Source ID
+
+Repository file
+
+Content used
+
+SRC-NW-001
+
+01_Brand_Guidelines.pdf
+
+Identity, logo, palette, typography, photography, voice, terminology.
+
+SRC-NW-002
+
+02_Company_Profile.pdf
+
+Organisation profile, operational facts and company-level claims.
+
+SRC-NW-003
+
+03_Marketing_and_Communication_Policy.pdf
+
+Advertising approvals, claims, promotions, disclosures and exceptions.
+
+SRC-NW-004
+
+04_Product_and_Customer_Information_Policy.pdf
+
+Product facts, service statements, customer information and correction handling.
+
+SRC-NW-005
+
+05_Product_Catalogue_and_Campaigns.xlsx
+
+SKU-level facts, prices, claims, campaign validity and approval status.
+
+SRC-NW-006
+
+Brand_Assets/Colour_Reference.txt and logo SVGs
+
+Digital colour values and approved logo variants.
+
+
+
+10. Gaps and items requiring administrator confirmation
+
+Gap ID
+
+Item
+
+Why it matters
+
+Recommended action
+
+Status
+
+GAP-001
+
+Named policy approver and authorised reviewer list not supplied.
+
+Approval permissions and accountability cannot be inferred.
+
+Assign authorised approver(s).
+
+Open
+
+GAP-002
+
+Live Returns Policy and detailed category exclusions are referenced but not included in the repository.
+
+Cannot fully validate return-condition claims.
+
+Upload current Returns Policy or confirm the authoritative source.
+
+Open
+
+GAP-003
+
+Evidence files for durability, environmental and other substantiation claims are not included.
+
+The policy describes evidence requirements, but no claim-specific evidence can be verified.
+
+Upload product-specific evidence or keep those claims unapproved.
+
+Open
+
+GAP-004
+
+Logo SVG assets are present, but no separate visual examples for incorrect usage or minimum-size testing are supplied.
+
+Some visual checks may need reference examples or administrator confirmation.
+
+Confirm logo asset versions and visual acceptance criteria.
+
+Open
+
+GAP-005
+
+Campaign dates are fixed in the sample data; time-zone and publication-date handling are not defined in the source documents.
+
+Date-bound campaign validation needs a system convention.
+
+Confirm timezone and whether scheduling or publication timestamp governs validity.
+
+Open
+
+
+
+11. Administrator review and approval
+
+Review action
+
+Reviewer input
+
+Approve policy record
+
+[Approve / reject / edit]
+
+Correction or clarification
+
+[Reviewer comments]
+
+Source accepted as authoritative?
+
+[Yes / No / Needs owner confirmation]
+
+Exception confirmed?
+
+[Yes / No / Not applicable]
+
+Reviewer name / role
+
+[Enter]
+
+Decision timestamp
+
+[System generated]
+
+Policy activation decision
+
+[Keep draft / approve for activation / reject]
+
+
+
+Activation safeguard. All records in this example remain drafts until a designated administrator verifies the wording, source, applicability, parameters and exceptions. A source file's own 'Approved' campaign status does not mean the entire generated policy profile is approved.
+
+END OF NOVAWEAR DRAFT POLICY PROFILE
+
+
+
+====================================
+4. UNIVERSAL POLICY DOCUMENT TEMPLATE DOCX
+====================================
+UNIVERSAL POLICYDOCUMENT
+
+Organisation-specific brand and content governance profile
+
+Purpose. A flexible, source-backed structure for policies extracted from an organisation's uploaded repository. It is not a mandatory checklist: sections and attributes appear only when supported by source material or confirmed by an authorised reviewer.
+
+Critical rule. Integrix AI must not invent a policy to fill an empty field. Missing, ambiguous, conflicting and not-applicable information must have distinct statuses.
+
+Document control
+
+Field
+
+Value / instruction
+
+Policy Profile ID
+
+System-generated unique identifier
+
+Organisation
+
+Extracted organisation name
+
+Industry / domain
+
+Extracted or user-confirmed; allow multiple domains
+
+Profile version
+
+Version number
+
+Created / updated
+
+System timestamps
+
+Source repository version
+
+Upload batch or repository version
+
+Profile status
+
+Draft / In review / Approved / Active / Superseded
+
+Policy owner / approver
+
+Organisation-appointed owner and authorised approver
+
+Effective / review date
+
+Only when supplied or confirmed
+
+
+
+Status vocabulary
+
+Status
+
+Meaning
+
+System behaviour
+
+Found
+
+Information located in source material.
+
+Extract value and preserve source location.
+
+Not found
+
+No supporting information identified.
+
+Do not infer; ask only if relevant.
+
+Ambiguous
+
+More than one interpretation is plausible.
+
+Show excerpt and request reviewer decision.
+
+Conflicting
+
+Sources contain inconsistent values or rules.
+
+Show competing sources; do not silently choose.
+
+Not applicable
+
+Authorised user confirms it does not apply.
+
+Record who confirmed it and when.
+
+Needs verification
+
+Extraction or interpretation needs review.
+
+Keep draft and inactive.
+
+Approved
+
+Authorised reviewer accepted the record.
+
+Eligible for rule conversion, subject to validation.
+
+
+
+1. Organisation profile
+
+Attribute
+
+Extracted value
+
+Source location
+
+Status / reviewer note
+
+Legal / registered name
+
+[Value]
+
+[File, page/sheet/section]
+
+[Status]
+
+Trading / brand name
+
+[Value]
+
+[Source]
+
+[Status]
+
+Industry / sub-sector
+
+[Value]
+
+[Source or user confirmation]
+
+[Status]
+
+Products / services
+
+[Value]
+
+[Source]
+
+[Status]
+
+Markets / geographies
+
+[Value]
+
+[Source]
+
+[Status]
+
+Primary audiences
+
+[Value]
+
+[Source]
+
+[Status]
+
+Communication channels
+
+[Value]
+
+[Source]
+
+[Status]
+
+
+
+2. Core brand and communication policies
+
+Use only categories supported by the repository. A company without a formal visual identity guide should not receive invented visual rules.
+
+Policy category
+
+Typical information to extract
+
+Applicability
+
+Brand identity
+
+Approved name, logo variants, clear space, minimum size, prohibited alterations.
+
+Conditional
+
+Colour system
+
+Approved colour names/codes, combinations and restrictions.
+
+Conditional
+
+Typography and layout
+
+Typefaces, hierarchy, spacing and layout conventions.
+
+Conditional
+
+Brand voice and tone
+
+Tone attributes, writing style, preferred/prohibited language.
+
+Conditional
+
+Terminology
+
+Approved names, product terms, abbreviations and restricted terms.
+
+Conditional
+
+Imagery and media
+
+Photography, illustration, usage rights and asset rules.
+
+Conditional
+
+Channel standards
+
+Website, social, marketplace, email, print or other channel rules.
+
+Conditional
+
+
+
+3. Product, service and organisational facts
+
+Purpose. Capture facts that content may need to state accurately: products, services, prices, specifications, operating commitments, locations, dates, credentials or other domain-specific facts.
+
+Fact group
+
+Examples
+
+Source of truth / owner
+
+Status
+
+Product / service details
+
+Name, SKU, features, specifications, eligibility.
+
+[Source / owner]
+
+[Status]
+
+Commercial information
+
+Price, discount, fee, availability, validity.
+
+[Source / owner]
+
+[Status]
+
+Operational commitments
+
+Delivery, turnaround, service hours, coverage.
+
+[Source / owner]
+
+[Status]
+
+Credentials
+
+Certifications, licences, awards, partnerships.
+
+[Source / owner]
+
+[Status]
+
+Other domain facts
+
+Sector-specific facts found in repository.
+
+[Source / owner]
+
+[Status]
+
+
+
+4. Claims, evidence and substantiation
+
+Use when relevant. For factual, comparative, performance, safety, quality, environmental, financial, health or other claims requiring support.
+
+Claim ID
+
+Claim / permitted wording
+
+Scope
+
+Evidence reference
+
+Validity period
+
+Status
+
+[CLM-001]
+
+[Exact claim or approved wording]
+
+[Product/service/channel]
+
+[File and location]
+
+[Start/end/review date]
+
+[Status]
+
+[CLM-002]
+
+[Exact claim or approved wording]
+
+[Scope]
+
+[File and location]
+
+[Period]
+
+[Status]
+
+
+
+Interpretation. A claim without evidence is not automatically false; it is unsupported by the available repository. Label it accordingly and route it for review.
+
+5. Restrictions, disclosures and exceptions
+
+ID
+
+Requirement
+
+Trigger / context
+
+Exception / condition
+
+Source
+
+Status
+
+[RSD-001]
+
+[Must / must not appear]
+
+[When it applies]
+
+[Documented exception]
+
+[File and location]
+
+[Status]
+
+
+
+Exception handling. Do not generalise an exception beyond its documented scope. Record relevant channel, product, campaign, audience, geography and time period.
+
+6. Industry- or organisation-specific extensions
+
+Dynamic section. Integrix AI may add domain-specific subsections and metadata based on uploaded material and user confirmation. Examples might include medical disclosures, financial risk warnings, food allergen declarations, education accreditation or retail return conditions. These are illustrative only; the system must not assume they apply.
+
+Extension ID
+
+Domain / topic
+
+Requirement
+
+Additional metadata
+
+Source
+
+Status
+
+[EXT-001]
+
+[Detected topic]
+
+[Requirement]
+
+[Flexible key/value fields]
+
+[Source]
+
+[Status]
+
+
+
+7. Source register and traceability
+
+Source ID
+
+File name
+
+Type
+
+Version / date
+
+Page / sheet / cell / section
+
+Owner / authority
+
+Ingestion status
+
+[SRC-001]
+
+[Document name]
+
+[PDF/XLSX/DOCX/image]
+
+[Version/date]
+
+[Precise location]
+
+[Owner]
+
+[Processed/partial/failed]
+
+
+
+8. Common policy record
+
+Shared structure. All policy categories use the common fields below. Optional domain-specific metadata can be attached without changing the common record.
+
+Field
+
+Definition
+
+Policy ID
+
+Unique, stable identifier.
+
+Category / subcategory
+
+Common category plus optional organisation-specific category.
+
+Policy title
+
+Short human-readable name.
+
+Requirement / rule statement
+
+Clear, testable statement of what is required or prohibited.
+
+Detailed interpretation
+
+Context and conditions supported by the source.
+
+Applicability
+
+Products, services, channels, audiences, geographies or campaigns.
+
+Severity / criticality
+
+Suggested level with rationale; do not claim legal severity without a source.
+
+Validation method
+
+Exact match, structured comparison, keyword, visual, semantic, relationship or manual review.
+
+Parameters / values
+
+Approved phrases, colours, thresholds, reference IDs or other configurable values.
+
+Exception logic
+
+Documented exclusions and conditions.
+
+Source references
+
+Source ID and exact page, section, sheet or cell location.
+
+Extraction confidence
+
+Confidence in extraction; not a measure of policy correctness.
+
+Verification status
+
+Found / ambiguous / conflicting / needs verification / not applicable.
+
+Approval status
+
+Draft / approved / rejected / superseded.
+
+Reviewer / timestamp
+
+Who reviewed the record and when.
+
+Effective period / version
+
+Start/end dates and policy version, if available.
+
+
+
+9. Review and activation workflow
+
+Stage
+
+Action
+
+Possible outcome
+
+Draft extraction
+
+AI proposes records with source references.
+
+Draft only; not enforceable.
+
+Reviewer verification
+
+Check wording, source, scope, values and exceptions.
+
+Approve / edit / reject / clarify.
+
+Conflict resolution
+
+Document owner resolves competing or unclear sources.
+
+Resolved with decision record, or remains inactive.
+
+Policy activation
+
+Approved records are published to active policy set.
+
+Active / scheduled / inactive.
+
+Change management
+
+Compare revised uploads with existing policy versions.
+
+Amended / new version / superseded; retain history.
+
+
+
+Activation rule. High extraction confidence does not replace human approval. Only authorised, approved records may become active audit rules.
+
+10. Gaps and unresolved items
+
+Gap ID
+
+Missing / unclear information
+
+Why it matters
+
+Next action
+
+Owner
+
+Status
+
+[GAP-001]
+
+[Description]
+
+[Potential audit impact]
+
+Upload source / confirm / mark not applicable
+
+[Owner]
+
+Open
+
+
+
+Keep onboarding light. Ask for information only when it is relevant to the organisation's selected governance scope. Do not force completion of every optional section.
+
+11. Change history
+
+Version
+
+Date
+
+Change summary
+
+Changed by
+
+Approved by
+
+1.0
+
+[Date]
+
+Initial generated policy profile.
+
+[Name / system]
+
+[Approver]
+
+
+
+Template design rules for Integrix AI
+
+Maintain a stable common schema for organisation identity, policy records, provenance, verification and approval.
+
+Allow optional sections and flexible domain-specific metadata; do not require every organisation to populate every field.
+
+Keep missing, ambiguous, conflicting and not-applicable states distinct.
+
+Preserve source provenance to page, sheet, cell range or image region where possible.
+
+Separate extraction confidence, policy severity and human approval.
+
+Keep draft policies inactive until an authorised reviewer approves them.
+
+Version profiles and retain prior decisions so audits can be reproduced against the policy version active at the time.
+
+Treat examples in this template as illustrative; actual rules must come from the organisation's repository or explicit confirmation.
+
+END OF TEMPLATE
+
+
+
+====================================
+5. SAMPLE AD TEST PACK PDF
+====================================
+INTEGRIX AI | NOVAWEAR TEST CONTENT | FICTIONAL DEMO DATA Page 1
+NOVAWEAR
+SAMPLE ADVERTISEMENT PACK
+Content submissions and expected audit outcomes for Integrix AI
+PACK VERSION 0.1 – Draft
+REFERENCE DATE FOR TESTS 13 November 2026
+ORGANISATION NOVAWEAR (fictional Chennai-based online apparel retailer)
+PURPOSE Define representative pre-publication content submissions and expected
+policy-audit outcomes.
+STATUS Test fixtures only. These are not live advertisements or approved campaign
+materials.
+How to use this pack
+Each page represents a proposed content submission. The ad panel is the submitted creative; the test notes below it
+define the expected result, relevant rule, evidence required and any human-review boundary. These outcomes are
+design expectations, not results from a functioning Integrix AI system.
+Important: A missing source or ambiguous claim should not be converted into an invented fact or an automatic violation.
+The system should return NOT_FOUND or NEEDS_VERIFICATION where appropriate.
+
+-- 1 of 9 --
+
+INTEGRIX AI | NOVAWEAR TEST CONTENT | FICTIONAL DEMO DATA Page 2
+AD-NW-001 | Everyday, made easy.
+A clean compliant product-information example
+NOVAWEAR
+THE CLASSIC COTTON SHIRT
+An easy everyday layer in 100% cotton. Regular fit. Made for repeat wear.
+n1,299
+NOVAWEAR | NW-CS-001 | Regular fit
+SKU / scope NW-CS-001 – Classic Cotton Shirt Channel NOVAWEAR website product tile
+Test date 13 Nov 2026 Submission ID AD-NW-001
+Expected audit outcome
+PASS for fabric composition and base price, provided the SKU and catalogue version match the current source record.
+Relevant rule(s): NW-RULE-001 (composition); price comparison against base catalogue price.
+Reasoning and source basis: The product catalogue lists NW-CS-001 as 100% cotton, regular fit, with a base selling
+price of n1,299.
+Human review boundary: No exception is needed. Confirm the source catalogue is current before activation.
+
+-- 2 of 9 --
+
+INTEGRIX AI | NOVAWEAR TEST CONTENT | FICTIONAL DEMO DATA Page 3
+AD-NW-002 | Price mismatch
+Deliberate factual / commercial violation
+NOVAWEAR
+THE CLASSIC COTTON SHIRT
+Your everyday essential. 100% cotton. Regular fit.
+n999
+Shop now | NOVAWEAR | NW-CS-001
+SKU / scope NW-CS-001 – Classic Cotton Shirt Channel Instagram feed advertisement
+Test date 13 Nov 2026 Submission ID AD-NW-002
+Expected audit outcome
+FAIL – displayed price is not supported by the current base price or an applicable approved campaign on the stated
+date/channel.
+Relevant rule(s): NW-RULE-002 (campaign price validity); price-to-SKU fact check.
+Reasoning and source basis: The base selling price is n1,299. The repository's CMP-26-014 offer ended on 31 Oct
+2026. No matching active approved campaign is supplied for n999 on 13 Nov 2026.
+Human review boundary: Do not invent a discount or infer an offer from an old campaign. Correct the price or provide a
+valid approved campaign record.
+
+-- 3 of 9 --
+
+INTEGRIX AI | NOVAWEAR TEST CONTENT | FICTIONAL DEMO DATA Page 4
+AD-NW-003 | Composition mismatch
+Deliberate product-claim violation
+NOVAWEAR
+100% COTTON. ALL DAY
+COMFORT.
+Meet the Everyday Oxford Shirt – a breathable 100% cotton essential for every
+day.
+n1,199
+NOVAWEAR | NW-CS-002
+SKU / scope NW-CS-002 – Everyday Oxford Shirt Channel NOVAWEAR website banner
+Test date 13 Nov 2026 Submission ID AD-NW-003
+Expected audit outcome
+FAIL – the 100% cotton claim conflicts with the approved SKU composition.
+Relevant rule(s): NW-RULE-001 (SKU fabric composition match).
+Reasoning and source basis: The catalogue lists NW-CS-002 as 60% cotton and 40% polyester. A claim for 100%
+cotton is materially inconsistent.
+Human review boundary: The correction should use the exact approved composition. Avoid rewriting the claim into a
+new unsupported performance statement.
+
+-- 4 of 9 --
+
+INTEGRIX AI | NOVAWEAR TEST CONTENT | FICTIONAL DEMO DATA Page 5
+AD-NW-004 | Approved campaign with conditions
+Valid campaign example – conditions must remain visible
+NOVAWEAR
+CORE CREW TEE
+A regular-fit everyday tee. Available in selected sizes.
+n599
+Campaign price valid 1–15 Nov 2026 on NOVAWEAR website and Instagram Shop. Selected sizes
+only. Price shown at checkout.
+SKU / scope NW-TS-003 – Core Crew T-Shirt Channel Instagram Shop
+Test date 13 Nov 2026 Submission ID AD-NW-004
+Expected audit outcome
+PASS for campaign price if the submission retains the stated validity, channel, selected-size limitation and checkout
+qualification.
+Relevant rule(s): NW-RULE-002 (campaign price validity).
+Reasoning and source basis: CMP-26-018 is marked Approved in the campaign workbook and specifies n599 for
+NW-TS-003 from 1–15 Nov 2026 on the website and Instagram Shop, selected sizes only.
+Human review boundary: Confirm the selected size is eligible and that the publication timestamp falls within the
+campaign window. Campaign ends 15 Nov 2026.
+
+-- 5 of 9 --
+
+INTEGRIX AI | NOVAWEAR TEST CONTENT | FICTIONAL DEMO DATA Page 6
+AD-NW-005 | Pending campaign price
+Deliberate approval-state violation
+NOVAWEAR
+EVERYDAY CHINO –
+LIMITED-TIME OFFER
+Get your pair today at our special campaign price.
+n1,399
+Offer ends 20 Nov 2026 | Shop now
+SKU / scope NW-TR-005 – Everyday Chino Channel NOVAWEAR website homepage banner
+Test date 13 Nov 2026 Submission ID AD-NW-005
+Expected audit outcome
+FAIL / BLOCKED FOR APPROVAL – the campaign is Pending and cannot authorise a public campaign price.
+Relevant rule(s): NW-RULE-002 (campaign price validity).
+Reasoning and source basis: CMP-26-021 lists n1,399 for NW-TR-005 from 10–20 Nov 2026 but its approval status is
+Pending. A date match alone is insufficient.
+Human review boundary: Route to the authorised commercial approver. Do not treat the campaign as approved until
+the source status changes through the proper workflow.
+
+-- 6 of 9 --
+
+INTEGRIX AI | NOVAWEAR TEST CONTENT | FICTIONAL DEMO DATA Page 7
+AD-NW-006 | Unsupported performance claim
+Ambiguous / evidence-dependent claim
+NOVAWEAR
+WRINKLE-PROOF. READY FOR
+ANYTHING.
+A shirt that stays perfectly smooth from morning to night.
+n1,299
+NOVAWEAR | NW-CS-001
+SKU / scope NW-CS-001 – Classic Cotton Shirt Channel Paid social advertisement
+Test date 13 Nov 2026 Submission ID AD-NW-006
+Expected audit outcome
+NEEDS_VERIFICATION or FAIL depending on evidence lookup. If no current, approved, product-specific substantiation
+exists, create a claim finding.
+Relevant rule(s): NW-RULE-003 (unsupported performance claim).
+Reasoning and source basis: The repository's marketing policy requires substantiation for performance claims. No
+product-specific wrinkle-resistance evidence is included in the supplied demo repository.
+Human review boundary: The absence of evidence in this repository is NOT_FOUND, not proof that no evidence exists
+anywhere. Request the evidence or remove/qualify the claim.
+
+-- 7 of 9 --
+
+INTEGRIX AI | NOVAWEAR TEST CONTENT | FICTIONAL DEMO DATA Page 8
+AD-NW-007 | Delivery guarantee
+Deliberate service-promise violation
+NOVAWEAR
+ORDER TODAY. DELIVERED
+TOMORROW. GUARANTEED.
+Place your order now and receive it by tomorrow, wherever you are.
+NOVAWEAR | Delivery promise
+SKU / scope General service statement Channel Website homepage banner
+Test date 13 Nov 2026 Submission ID AD-NW-007
+Expected audit outcome
+FAIL – unsupported guaranteed delivery promise, unless a valid service- and region-specific approved guarantee is
+supplied.
+Relevant rule(s): NW-RULE-004 (delivery estimate not stated as guarantee).
+Reasoning and source basis: The repository states orders are generally handed to the carrier within 1–2 business
+days. This is a dispatch estimate, not a guaranteed delivery date.
+Human review boundary: Use the approved dispatch estimate and avoid turning it into a delivery guarantee. Check for
+a formally approved exception before blocking.
+
+-- 8 of 9 --
+
+INTEGRIX AI | NOVAWEAR TEST CONTENT | FICTIONAL DEMO DATA Page 9
+Consolidated test matrix
+This matrix is the acceptance reference for later functional testing. The final system should return a structured finding,
+cite its source, preserve the submitted content, and avoid inventing missing context.
+ID Primary test Expected outcome Rule family
+AD-NW-001 Everyday, made easy. PASS for fabric composition and base price,
+provided the SKU and catalogue version match
+the current source record.
+NW-RULE-001
+AD-NW-002 Price mismatch FAIL NW-RULE-002
+AD-NW-003 Composition mismatch FAIL NW-RULE-001
+AD-NW-004 Approved campaign with
+conditions
+PASS for campaign price if the submission retains
+the stated validity, channel, selected-size
+limitation and checkout qualification.
+NW-RULE-002
+AD-NW-005 Pending campaign price FAIL / BLOCKED FOR APPROVAL NW-RULE-002
+AD-NW-006 Unsupported performance claim NEEDS_VERIFICATION NW-RULE-003
+AD-NW-007 Delivery guarantee FAIL NW-RULE-004
+Implementation notes
+1. Each submission should carry organisation ID, channel, intended publication timestamp, SKU/product reference where
+applicable, and source asset/text.
+2. The audit result should distinguish PASS, FAIL, NEEDS_VERIFICATION, NOT_FOUND, CONFLICTING,
+NOT_APPLICABLE and EXEMPTED.
+3. A campaign price check must evaluate approval status, SKU, dates, channel, price and conditions together.
+4. Evidence absence in the connected repository should be reported as NOT_FOUND / NEEDS_VERIFICATION, not
+treated as proof of non-existence.
+5. Human approval remains the final publication gate. An AI finding is an assistive recommendation, not an automatic
+legal determination.
+END OF TEST PACK
+
+-- 9 of 9 --
+
+
+
+====================================
+6. BRAND REPOSITORY REPO PDFs
+====================================
+
+--- PDF: 01_Brand_Guidelines.pdf ---
+NOVAWEAR | CONTROLLED BUSINESS DOCUMENT Page 1
+NOVAWEAR Brand Guidelines
+NW-BRAND-001 | Version 1.3 | Effective 01 Oct 2026
+Document owner: Brand and Creative Lead | Status: Approved for internal use
+This document is part of NOVAWEAR's internal brand and operating reference set. Where a product-specific
+record or campaign approval is more recent, the approved record takes precedence for that item.
+1. About this guide
+This guide is for anyone producing or commissioning customer-facing material for NOVAWEAR: the in-house marketing
+team, merchandising team, marketplace operators, photographers, agencies and retail partners. It sets the working
+standards for how the brand looks and sounds. It is not a campaign brief; campaign-specific instructions are issued
+separately.
+What NOVAWEAR is
+NOVAWEAR is an Indian online apparel retailer focused on everyday clothing that is easy to wear, straightforward to
+care for and sensibly priced. The range is built around repeat-use wardrobe pieces rather than occasion-led fashion.
+We sell through our own online store and selected marketplaces.
+Brand position
+Everyday clothing, considered properly. We make useful wardrobe staples and explain them clearly. We do not position
+ourselves as a luxury label, a performance-wear specialist or a trend forecasting house.
+2. Brand identity
+Primary identity elements
+Element Approved standard
+Brand name NOVAWEAR (one word, uppercase in formal lock-ups). In running
+copy, NovaWear is acceptable only in sentence case where the
+platform requires it.
+Descriptor Everyday essentials
+Primary audience Adults shopping for practical casual clothing for work-from-home,
+commuting and everyday use.
+Personality Practical, modern, calm, helpful and unpretentious.
+Avoid Luxury, revolutionary, life-changing, guaranteed, premium for
+everyone, fashion that transforms you.
+Logo use
+Use only the supplied NOVAWEAR master logo files. Keep clear space around the mark equal to the height of the letter
+N in the wordmark. Do not stretch, rotate, outline, add shadows, place the logo over a visually busy area or recreate it
+using a typeface. The navy logo is preferred on light backgrounds; the white reverse version is for approved dark
+backgrounds.
+Minimum digital width is 120 px for the full wordmark. If a placement is too small to remain legible, use the approved NW
+monogram asset. Do not create a new monogram or alter the letter spacing.
+Colour palette
+Approved colours
+
+-- 1 of 3 --
+
+NOVAWEAR | CONTROLLED BUSINESS DOCUMENT Page 2
+Name HEX Use
+NOVA Navy #172B4D Primary brand colour; headers, logo and
+key navigation.
+Slate Blue #315B7D Secondary colour for supporting headings
+and links.
+Warm Sand #E9E1D5 Background panels and restrained lifestyle
+applications.
+Rust #C66A3D Accent only; small highlights, never long
+text.
+Cloud #F4F6F8 Neutral background.
+Ink #202833 Body text.
+Do not substitute colours based on visual approximation. For digital work, use the HEX values above. For print, request
+the current production colour reference from the design team rather than converting by eye.
+3. Typography and layout
+Use Inter for digital layouts. Use Arial only where Inter is unavailable in a partner platform or office document. Headlines
+should be short and functional. Avoid condensed display fonts, decorative scripts and all-caps paragraphs.
+Type hierarchy
+Role Guidance
+Headline Inter SemiBold; sentence case; usually 28–40 px for web campaign
+artwork.
+Subheading Inter Medium; sentence case; 16–22 px.
+Body Inter Regular; 14–18 px; keep line length comfortable.
+Product facts Inter Medium; use clear labels and consistent units.
+Leave visible breathing room around product photography and text. A campaign tile should have one clear message,
+one primary product focus and one obvious next step. Do not fill every available space with badges, stickers or
+promotional copy.
+4. Photography and product presentation
+Photography standards
+• Show the garment accurately. Colour, fit, texture and visible details should be consistent with the product being sold.
+• Use natural-looking light and realistic skin tones. Avoid heavy filters that materially change garment colour.
+• Do not digitally remove seams, pockets, closures or other construction details that a customer would reasonably
+expect to see.
+• Model images must be used only where the relevant usage permission is recorded. Do not assume a supplier image is
+cleared for every channel.
+• Flat-lay and detail images should show the actual product or an approved sample from the same production
+specification.
+5. Brand voice
+NOVAWEAR speaks like a helpful retail associate who knows the product. We are clear about fabric, fit, care and
+delivery. We do not shout, overpromise or use pressure tactics.
+
+-- 2 of 3 --
+
+NOVAWEAR | CONTROLLED BUSINESS DOCUMENT Page 3
+Voice examples
+Use Avoid
+A cotton-rich shirt for everyday wear. The ultimate shirt that changes everything.
+Available in three colours. A massive range of endless possibilities.
+Check the size guide before ordering. Perfect fit guaranteed for everyone.
+Offer valid until 30 November, while stocks last. Hurry! Last chance ever! (unless this is factually true and approved).
+6. Naming and terminology
+Use the product name exactly as listed in the current product catalogue. Use 'cotton-rich' only when the catalogue
+records a cotton blend; use '100% cotton' only for a product whose approved composition is 100% cotton. Use 'regular
+fit', 'relaxed fit' and 'oversized fit' only where that fit is assigned in the product record.
+Write prices in Indian rupees using the n symbol. Do not change a listed price, MRP, discount or offer period without an
+approved merchandising update. Dates should be written unambiguously, for example, '30 November 2026'.
+7. Document control and ownership
+Control details
+Field Value
+Document ID NW-BRAND-001
+Version 1.3
+Effective date 01 October 2026
+Owner Brand and Creative Lead
+Review cycle Every six months, or when identity standards change.
+Supersedes NW-BRAND-001 v1.2
+Questions about logo files, campaign exceptions or partner adaptations should be sent to the Brand and Creative team.
+Any exception to this guide must be recorded against the relevant campaign or asset; verbal approval is not sufficient.
+
+-- 3 of 3 --
+
+
+
+--- PDF: 02_Company_Profile.pdf ---
+NOVAWEAR | CONTROLLED BUSINESS DOCUMENT Page 1
+NOVAWEAR Company Profile
+NW-CORP-001 | Version 1.1 | Effective 01 Oct 2026
+Document owner: Business Operations | Status: Approved for internal use
+This document is part of NOVAWEAR's internal brand and operating reference set. Where a product-specific
+record or campaign approval is more recent, the approved record takes precedence for that item.
+Company overview
+NOVAWEAR is a Chennai-based online apparel business established in 2021. The company sells everyday casual
+clothing through its own e-commerce storefront and selected third-party marketplaces. Its range is built around
+repeat-use wardrobe pieces rather than occasion-led fashion.
+Business details
+Company reference information
+Field Approved information
+Legal entity NovaWear Retail Private Limited (fictional demonstration entity)
+Trading name NOVAWEAR
+Head office Chennai, Tamil Nadu, India
+Business model Online retail; direct-to-consumer and selected marketplaces
+Website www.novawear.example
+Customer support care@novawear.example
+Business enquiries partnerships@novawear.example
+Support hours Monday–Saturday, 9:30 AM–6:00 PM IST, excluding public holidays
+What we sell
+The core assortment consists of everyday apparel made for regular use. The current catalogue includes shirts, T-shirts,
+trousers and lightweight overshirts. Materials, garment measurements and care instructions are maintained at SKU
+level in the product catalogue.
+Approved company descriptions
+Approved descriptions
+Context Approved wording
+Short description NOVAWEAR makes everyday clothing and wardrobe essentials
+available online.
+About us NOVAWEAR is an Indian online apparel retailer focused on
+practical casual clothing, clear product information and
+straightforward customer support.
+Marketplace Everyday apparel for workdays, weekends and the routines in
+between.
+Operational facts
+
+-- 1 of 2 --
+
+NOVAWEAR | CONTROLLED BUSINESS DOCUMENT Page 2
+Fact register
+Fact Approved value / boundary
+Shipping coverage Serviceable pin codes across India; coverage must be checked at
+checkout.
+Dispatch target Orders are generally handed to the carrier within 1–2 business
+days; this is a target, not a guaranteed delivery date.
+Delivery estimate Shown at checkout based on pin code and carrier availability.
+Returns Eligible items may be returned within 7 days of delivery, subject to
+the current Returns Policy.
+Payment methods Methods displayed at checkout; do not advertise a payment option
+unless currently enabled.
+Claims requiring substantiation
+Do not describe NOVAWEAR as India's largest, fastest-growing, number-one or best-rated apparel brand without a
+current, independently supportable basis and written approval. Do not describe all products as sustainable, organic,
+ethically made or locally manufactured. Such descriptions may be used only for individual products where supplier
+evidence and approval are on file.
+Document control
+Control details
+Document ID NW-CORP-001
+Version 1.1
+Effective date 01 October 2026
+Owner Business Operations
+Review trigger Changes to company details, channels, service coverage or
+operating commitments.
+
+-- 2 of 2 --
+
+
+
+--- PDF: 03_Marketing_and_Communication_Policy.pdf ---
+NOVAWEAR | CONTROLLED BUSINESS DOCUMENT Page 1
+Marketing and Communication Policy
+NW-MKT-002 | Version 2.0 | Effective 01 Oct 2026
+Document owner: Marketing Operations | Status: Approved for internal use
+This document is part of NOVAWEAR's internal brand and operating reference set. Where a product-specific
+record or campaign approval is more recent, the approved record takes precedence for that item.
+1. Purpose and scope
+This policy applies to advertising, social posts, email campaigns, marketplace banners, product launch material,
+influencer briefs and other customer-facing promotional content published in NOVAWEAR's name. It applies to
+employees, agencies and partners creating content on our behalf.
+2. Approval before publication
+Required checks
+• Every asset must have a named business owner and a planned publication channel.
+• Product names, prices, offers, material composition and delivery statements must be checked against the current
+approved source record.
+• New campaign claims must include the evidence or approval reference used to support them.
+• Paid campaigns, influencer content and marketplace promotions require approval from the campaign owner.
+• An asset approved for one channel is not automatically approved for another if format, disclaimer visibility or offer
+terms change.
+3. Pricing and promotional claims
+Prices and discounts must match the current merchandising record at the time content is scheduled. If a campaign price
+is used, the approval must identify the SKU, campaign dates, eligible channel and exclusions. Do not calculate a
+discount from an outdated MRP.
+Words such as 'free', 'lowest', 'best price', 'limited stock' and 'last chance' must be supported by current campaign
+information. 'Free delivery' may be used only for eligible pin codes and order conditions where the offer is active. Do not
+imply that a standard delivery estimate is guaranteed.
+4. Product and performance claims
+Claim handling
+Claim type Requirement
+Fabric composition Must match the approved SKU composition field and supplier
+record.
+Fit and comfort Use descriptive wording supported by garment measurements or
+construction; avoid universal promises.
+Durability Requires test results or documented substantiation for the specific
+product.
+Skin-friendly / hypoallergenic Do not use without product-specific evidence and written approval.
+Sustainable / eco-friendly / organic Requires a defined attribute, supporting supplier documentation and
+approval; do not apply to the whole range by default.
+Made in India Use only where country-of-origin records support the specific SKU.
+
+-- 1 of 2 --
+
+NOVAWEAR | CONTROLLED BUSINESS DOCUMENT Page 2
+5. Language and brand presentation
+Use the voice and visual standards in NW-BRAND-001. Avoid aggressive urgency, shaming language, body-image
+pressure and claims that suggest a garment will change a person's social status or attractiveness. Do not make
+disparaging comparisons with named competitors.
+Customer reviews and testimonials must be genuine and used with permission. Do not edit a review in a way that
+changes its meaning. Incentivised or gifted collaborations must carry the disclosure required by the platform and
+campaign brief.
+6. Mandatory campaign information
+Include where relevant
+• Offer validity dates and eligible products or categories.
+• Material exclusions, size exclusions or channel restrictions that materially affect the offer.
+• Delivery or return conditions necessary to avoid a misleading impression.
+• Required sponsorship or collaboration disclosure.
+• Readable terms and conditions; do not hide material limitations in low-contrast text.
+7. Exceptions and escalation
+If a content creator cannot verify a claim, remove it or send it to the campaign owner for substantiation. If two approved
+sources conflict, do not choose one based on recency alone; raise a source conflict and obtain confirmation from the
+document owner. Exceptions must record approver, date, scope and expiry.
+8. Document control
+Control details
+Document ID NW-MKT-002
+Version 2.0
+Effective date 01 October 2026
+Owner Marketing Operations
+Approvers Marketing Head; Merchandising Lead for price and offer changes
+Review cycle Quarterly and whenever campaign controls change.
+
+-- 2 of 2 --
+
+
+
+--- PDF: 04_Product_and_Customer_Information_Policy.pdf ---
+NOVAWEAR | CONTROLLED BUSINESS DOCUMENT Page 1
+Product and Customer Information Policy
+NW-PROD-003 | Version 1.4 | Effective 01 Oct 2026
+Document owner: Merchandising and Customer Experience | Status: Approved for internal use
+This document is part of NOVAWEAR's internal brand and operating reference set. Where a product-specific
+record or campaign approval is more recent, the approved record takes precedence for that item.
+1. Purpose
+This policy governs product information and service statements used in NOVAWEAR's storefront, marketplace listings,
+customer emails and support macros. It is intended to keep product information accurate and avoid commitments that
+operations cannot consistently meet.
+2. Product data ownership
+The Merchandising team owns the approved product catalogue. Product title, SKU, colour, size range, composition, fit,
+care instructions, MRP and current selling price must be taken from the current catalogue or a separately approved
+campaign record. Screenshots of old listings are not an authoritative source.
+3. Product descriptions
+Product content requirements
+• Use the exact approved product name and SKU.
+• State fibre composition using the recorded percentages; do not round a blend into a pure-fibre claim.
+• Use fit labels only where assigned in the catalogue.
+• Care instructions must match the garment label or approved product specification.
+• Do not infer stretch, shrink resistance, colourfastness, wrinkle resistance or water resistance from a photograph.
+4. Price and offer information
+The product catalogue is the standard reference for base price and MRP. Campaign prices are valid only when a
+campaign approval record exists and its effective dates include the publication date. If the catalogue and campaign
+record disagree, hold the asset for review.
+5. Delivery, returns and customer service
+Approved service statements
+Topic Approved wording / rule
+Dispatch Orders are generally handed to the carrier within 1–2 business
+days. This is not a guaranteed delivery date.
+Delivery Estimated delivery is calculated at checkout using destination pin
+code and carrier availability.
+Returns Eligible items may be returned within 7 days of delivery, subject to
+hygiene, condition and category exclusions in the live Returns
+Policy.
+Refunds Refund timelines depend on payment method and bank or
+payment-provider processing. Do not promise a universal number of
+days unless confirmed for the case.
+Support Monday–Saturday, 9:30 AM–6:00 PM IST, excluding public
+holidays.
+
+-- 1 of 2 --
+
+NOVAWEAR | CONTROLLED BUSINESS DOCUMENT Page 2
+6. Customer information and privacy
+Do not include a customer's name, phone number, address, order number, chat screenshot or other identifiable
+information in marketing material without documented permission and a clear business purpose. Support screenshots
+must be anonymised before sharing outside the support team.
+7. Handling uncertainty and corrections
+If a product fact is missing, mark it as not confirmed and ask Merchandising for the approved value. Do not fill gaps
+using a similar product or an informal supplier message. If a published listing contains a material error, notify the
+channel owner, pause affected promotion where possible and record the correction.
+8. Document control
+Control details
+Document ID NW-PROD-003
+Version 1.4
+Effective date 01 October 2026
+Owner Merchandising and Customer Experience
+Review trigger Catalogue changes, returns-policy changes or service-level
+changes.
+
+-- 2 of 2 --
+
+
