@@ -44,6 +44,11 @@ import {
   Menu,
   BarChart3,
   FolderOpen,
+  Edit2,
+  Trash2,
+  Plus,
+  Coins,
+  Globe,
 } from 'lucide-react';
 import {
   extractTextFromImage,
@@ -53,7 +58,7 @@ import {
   OcrResult,
 } from './services/groqAuditService';
 import { runScenario, runAllScenarios, getRepositoryStats } from './services/api';
-import { AuditResult } from './types';
+import { AuditResult, Organisation, PolicyRuleItem, ProductItem } from './types';
 import {
   CANONICAL_SCENARIO_REGISTRY,
   getCanonicalScenario,
@@ -67,20 +72,35 @@ import { AuditHistoryPage } from './components/AuditHistoryPage';
 import { ApprovalCentrePage } from './components/ApprovalCentrePage';
 import { SettingsPage } from './components/SettingsPage';
 import { LifecycleManager, LifecycleStage } from './components/LifecycleManager';
+import {
+  getStoredOrganisations,
+  saveStoredOrganisations,
+  getStoredActiveOrgId,
+  saveStoredActiveOrgId,
+  getStoredRulesForOrg,
+  saveStoredRulesForOrg,
+  getStoredProductsForOrg,
+  saveStoredProductsForOrg,
+  getTestsForOrg,
+  DEFAULT_ORGANISATIONS,
+  DABUR_PRODUCTS,
+  DABUR_RULES,
+  DABUR_TESTS,
+  NOVAWEAR_PRODUCTS,
+  NOVAWEAR_RULES,
+  NOVAWEAR_TESTS,
+} from './services/governanceStorage';
+import {
+  OrgModal,
+  RuleModal,
+  ProductModal,
+  ToastNotification,
+} from './components/GovernanceModals';
 
 /* ─────────────────────────────────────────────────────────────
    TYPES & DATA
 ───────────────────────────────────────────────────────────── */
-interface Product {
-  sku: string;
-  name: string;
-  category: string;
-  basePrice: string;
-  fabric: string;
-  fit: string;
-  unapprovedClaims: string[];
-  activeCampaign?: { code: string; price: string; dates: string; conditions: string };
-}
+type Product = ProductItem;
 
 interface TestItem {
   id: string;
@@ -110,7 +130,8 @@ export type Page =
   | 'approval-centre'
   | 'settings';
 
-const PRODUCTS: Product[] = [
+const PRODUCTS: Product[] = DABUR_PRODUCTS;
+const _OLD_PRODUCTS: Product[] = [
   {
     sku: 'NW-CS-001',
     name: 'Classic Cotton Shirt',
@@ -285,7 +306,8 @@ const TESTS: TestItem[] = [
   },
 ];
 
-const RULES = [
+const RULES = DABUR_RULES;
+const _OLD_RULES = [
   {
     id: 'NW-RULE-001',
     title: 'Fabric Composition Match',
@@ -438,6 +460,137 @@ export const App: React.FC = () => {
   const auditSeqRef = useRef<number>(0);
   const closeDropdownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Dynamic Governance State (Multi-tenant Organisations, Editable Rules & Products)
+  const [organisations, setOrganisations] = useState<Organisation[]>(getStoredOrganisations);
+  const [activeOrgId, setActiveOrgId] = useState<string>(getStoredActiveOrgId);
+  const [products, setProducts] = useState<ProductItem[]>(() => getStoredProductsForOrg(getStoredActiveOrgId()));
+  const [rules, setRules] = useState<PolicyRuleItem[]>(() => getStoredRulesForOrg(getStoredActiveOrgId()));
+  const [tests, setTests] = useState<TestItem[]>(() => getTestsForOrg(getStoredActiveOrgId()));
+
+  const activeOrg = organisations.find((o) => o.id === activeOrgId) || organisations[0] || DEFAULT_ORGANISATIONS[0];
+
+  // Modals & Notifications
+  const [orgModalOpen, setOrgModalOpen] = useState(false);
+  const [editingOrg, setEditingOrg] = useState<Organisation | null>(null);
+  const [ruleModalOpen, setRuleModalOpen] = useState(false);
+  const [editingRule, setEditingRule] = useState<PolicyRuleItem | null>(null);
+  const [productModalOpen, setProductModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
+  const [orgDropdownOpen, setOrgDropdownOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+  };
+
+  const handleSwitchOrg = (orgId: string) => {
+    setActiveOrgId(orgId);
+    saveStoredActiveOrgId(orgId);
+    setOrgDropdownOpen(false);
+    const orgProducts = getStoredProductsForOrg(orgId);
+    const orgRules = getStoredRulesForOrg(orgId);
+    const orgTests = getTestsForOrg(orgId);
+    setProducts(orgProducts);
+    setRules(orgRules);
+    setTests(orgTests);
+    if (orgProducts.length > 0) {
+      setSku(orgProducts[0].sku);
+    }
+    const target = organisations.find((o) => o.id === orgId);
+    if (target) showToast(`Switched active organisation to ${target.name}`);
+  };
+
+  const handleSaveOrg = (updatedOrg: Organisation) => {
+    let nextOrgs: Organisation[];
+    const exists = organisations.some((o) => o.id === updatedOrg.id);
+    if (exists) {
+      nextOrgs = organisations.map((o) => (o.id === updatedOrg.id ? updatedOrg : o));
+      showToast(`Updated organisation: ${updatedOrg.name}`);
+    } else {
+      nextOrgs = [...organisations, updatedOrg];
+      setActiveOrgId(updatedOrg.id);
+      saveStoredActiveOrgId(updatedOrg.id);
+      showToast(`Created & activated organisation: ${updatedOrg.name}`);
+    }
+    setOrganisations(nextOrgs);
+    saveStoredOrganisations(nextOrgs);
+    setEditingOrg(null);
+  };
+
+  const handleDeleteOrg = (orgId: string) => {
+    if (organisations.length <= 1) {
+      alert('At least one organisation must remain configured.');
+      return;
+    }
+    const target = organisations.find((o) => o.id === orgId);
+    const nextOrgs = organisations.filter((o) => o.id !== orgId);
+    setOrganisations(nextOrgs);
+    saveStoredOrganisations(nextOrgs);
+    if (activeOrgId === orgId) {
+      const fallbackId = nextOrgs[0].id;
+      setActiveOrgId(fallbackId);
+      saveStoredActiveOrgId(fallbackId);
+      setProducts(getStoredProductsForOrg(fallbackId));
+      setRules(getStoredRulesForOrg(fallbackId));
+      setTests(getTestsForOrg(fallbackId));
+    }
+    showToast(`Deleted organisation: ${target?.name || orgId}`);
+  };
+
+  const handleSaveRule = (rule: PolicyRuleItem) => {
+    let nextRules: PolicyRuleItem[];
+    const exists = rules.some((r) => r.id === rule.id);
+    if (exists) {
+      nextRules = rules.map((r) => (r.id === rule.id ? rule : r));
+      showToast(`Policy rule ${rule.id} updated`);
+    } else {
+      nextRules = [rule, ...rules];
+      showToast(`Added new policy rule: ${rule.id}`);
+    }
+    setRules(nextRules);
+    saveStoredRulesForOrg(activeOrgId, nextRules);
+    setEditingRule(null);
+  };
+
+  const handleDeleteRule = (ruleId: string) => {
+    const nextRules = rules.filter((r) => r.id !== ruleId);
+    setRules(nextRules);
+    saveStoredRulesForOrg(activeOrgId, nextRules);
+    showToast(`Removed rule ${ruleId} from active rulebook`);
+  };
+
+  const handleToggleRule = (ruleId: string) => {
+    const nextRules = rules.map((r) =>
+      r.id === ruleId ? { ...r, isActive: !r.isActive } : r
+    );
+    setRules(nextRules);
+    saveStoredRulesForOrg(activeOrgId, nextRules);
+    const updated = nextRules.find((r) => r.id === ruleId);
+    showToast(`Rule ${ruleId} is now ${updated?.isActive !== false ? 'Enforced' : 'Paused'}`);
+  };
+
+  const handleSaveProduct = (prod: ProductItem) => {
+    let nextProducts: ProductItem[];
+    const exists = products.some((p) => p.sku === prod.sku);
+    if (exists) {
+      nextProducts = products.map((p) => (p.sku === prod.sku ? prod : p));
+      showToast(`Updated product catalogue specs for ${prod.sku}`);
+    } else {
+      nextProducts = [prod, ...products];
+      showToast(`Added new SKU ${prod.sku} to approved catalogue`);
+    }
+    setProducts(nextProducts);
+    saveStoredProductsForOrg(activeOrgId, nextProducts);
+    setEditingProduct(null);
+  };
+
+  const handleDeleteProduct = (targetSku: string) => {
+    const nextProducts = products.filter((p) => p.sku !== targetSku);
+    setProducts(nextProducts);
+    saveStoredProductsForOrg(activeOrgId, nextProducts);
+    showToast(`Removed SKU ${targetSku} from catalogue`);
+  };
+
   const openDropdown = (menu: 'workspace' | 'governance' | 'insights') => {
     if (closeDropdownTimeoutRef.current) {
       clearTimeout(closeDropdownTimeoutRef.current);
@@ -472,7 +625,7 @@ export const App: React.FC = () => {
   };
 
   const isGeneralCampaign = selectedDemoPoster?.id === 'INX-NW-T06' || selectedDemoPoster?.scenarioId === 'SCENARIO-7' || !selectedDemoPoster?.sku;
-  const product = (!isGeneralCampaign && sku) ? PRODUCTS.find((p) => p.sku === sku) || null : null;
+  const product = (!isGeneralCampaign && sku) ? products.find((p) => p.sku === sku) || null : null;
 
   useEffect(() => {
     const onHash = () => {
@@ -581,7 +734,7 @@ export const App: React.FC = () => {
     setAuditing(true);
     setStep('Evaluating policy against catalogue specs…');
     const meta: AuditMetadata = {
-      brand: 'NOVAWEAR',
+      brand: activeOrg.name,
       sku: prod ? prod.sku : undefined,
       productName: prod ? prod.name : undefined,
       basePrice: prod ? prod.basePrice : undefined,
@@ -710,7 +863,7 @@ export const App: React.FC = () => {
 
       // 3. Run audit against catalogue specifications using the extracted text
       const isGen = item.id === 'INX-NW-T06' || item.scenarioId === 'SCENARIO-7' || !item.sku;
-      const prod = (!isGen && targetSku) ? PRODUCTS.find((p) => p.sku === targetSku) : undefined;
+      const prod = (!isGen && targetSku) ? products.find((p) => p.sku === targetSku) : undefined;
       await runAudit(ocrRes.text, prod || null, currentSeq);
       if (auditSeqRef.current !== currentSeq) return;
       // Ensure the displayed tab remains on actual backend findings for evaluator demonstration
@@ -740,7 +893,7 @@ export const App: React.FC = () => {
   const NAV_ITEMS = [
     { p: 'home' as Page, label: 'Home', icon: Sparkles },
     { p: 'audit' as Page, label: 'Audit Studio', icon: Zap },
-    { p: 'testpack' as Page, label: 'Demo Posters', icon: FlaskConical, count: 7 },
+    { p: 'testpack' as Page, label: 'Demo Posters', icon: FlaskConical, count: tests.length },
     { p: 'dashboard' as Page, label: 'Dashboard', icon: LayoutDashboard },
     { p: 'catalogue' as Page, label: 'Catalogue', icon: Package },
     { p: 'rules' as Page, label: 'Policy Rules', icon: Shield },
@@ -882,11 +1035,11 @@ export const App: React.FC = () => {
                         <FlaskConical className="w-4 h-4 text-amber-500" />
                         <div>
                           <div>Demo Posters</div>
-                          <div className="text-[10px] text-slate-400 font-normal">7 Canonical test pack items</div>
+                          <div className="text-[10px] text-slate-400 font-normal">{tests.length} Verified test pack items</div>
                         </div>
                       </div>
                       <span className="mono text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-bold">
-                        7
+                        {tests.length}
                       </span>
                     </button>
                     <div className="border-t border-slate-100 my-1" />
@@ -1113,14 +1266,98 @@ export const App: React.FC = () => {
 
           {/* RIGHT: Active Org Badge, User Profile & Actions */}
           <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-            {/* Active Organisation: NOVAWEAR */}
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100/90 border border-slate-200/80 text-xs shadow-2xs">
-              <Building2 className="w-3.5 h-3.5 text-indigo-600" />
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Org:</span>
-                <span className="font-extrabold text-slate-900">NOVAWEAR</span>
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              </div>
+            {/* Interactive Active Organisation Dropdown / Switcher */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setOrgDropdownOpen(!orgDropdownOpen)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs shadow-2xs transition-all cursor-pointer group active:scale-95"
+                title="Click to switch or manage organisation"
+              >
+                <div
+                  className="w-4 h-4 rounded-md flex items-center justify-center text-white text-[9px] font-black shrink-0"
+                  style={{ backgroundColor: activeOrg.color || '#4F46E5' }}
+                >
+                  {activeOrg.name.slice(0, 1).toUpperCase()}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Org:</span>
+                  <span className="font-extrabold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                    {activeOrg.name}
+                  </span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                </div>
+                <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${orgDropdownOpen ? 'rotate-180 text-indigo-600' : ''}`} />
+              </button>
+
+              {orgDropdownOpen && (
+                <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 animate-fadeIn">
+                  <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between">
+                    <div>
+                      <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                        Active Organisation
+                      </div>
+                      <div className="text-[11px] text-slate-700 font-bold truncate max-w-[180px]">
+                        {activeOrg.legalName}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setOrgDropdownOpen(false);
+                        setEditingOrg(activeOrg);
+                        setOrgModalOpen(true);
+                      }}
+                      className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-indigo-600 transition-colors cursor-pointer"
+                      title="Edit active organisation"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="py-1 max-h-56 overflow-y-auto">
+                    {organisations.map((org) => {
+                      const isCur = org.id === activeOrg.id;
+                      return (
+                        <button
+                          key={org.id}
+                          onClick={() => handleSwitchOrg(org.id)}
+                          className={`w-full flex items-center justify-between px-4 py-2 text-xs text-left transition-colors cursor-pointer ${
+                            isCur ? 'bg-indigo-50/70 text-indigo-900 font-bold' : 'text-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div
+                              className="w-5 h-5 rounded-md flex items-center justify-center text-white text-[10px] font-bold"
+                              style={{ backgroundColor: org.color || '#4F46E5' }}
+                            >
+                              {org.name.slice(0, 1).toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="font-bold text-slate-900 leading-tight">{org.name}</div>
+                              <div className="text-[10px] text-slate-400 font-normal">{org.industry}</div>
+                            </div>
+                          </div>
+                          {isCur && <Check className="w-4 h-4 text-indigo-600 stroke-[3]" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="border-t border-slate-100 pt-1.5 px-2">
+                    <button
+                      onClick={() => {
+                        setOrgDropdownOpen(false);
+                        setEditingOrg(null);
+                        setOrgModalOpen(true);
+                      }}
+                      className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition-colors cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add New Organisation</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Campaign Creatives Quick Trigger */}
@@ -1418,26 +1655,26 @@ export const App: React.FC = () => {
             </section>
 
             {/* ════════════════════════════════════════════════════════
-                NOVAWEAR CAMPAIGN CREATIVES GALLERY
+                ACTIVE ORGANISATION CAMPAIGN CREATIVES GALLERY
                 ════════════════════════════════════════════════════════ */}
             <section id="evaluator-demo-gallery" className="space-y-6 pt-4 scroll-mt-24">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
                 <div>
                   <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
-                    NOVAWEAR Campaign Creatives
+                    {activeOrg.name} Campaign Creatives ({tests.length})
                   </span>
                   <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight mt-2">
-                    Brand Campaign Advertisements
+                    {activeOrg.name} Brand Campaign Advertisements
                   </h2>
                   <p className="text-xs text-slate-500 mt-1">
-                    Select an active campaign creative to audit against catalogue specifications and brand governance policies.
+                    Select an active campaign creative to audit against {activeOrg.name} specifications and brand governance policies.
                   </p>
                 </div>
               </div>
 
-              {/* 7 Posters Grid */}
+              {/* Verified Posters Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                {TESTS.map((poster) => (
+                {tests.map((poster) => (
                   <div
                     key={poster.id}
                     className="creative-card p-4 flex flex-col justify-between hover:border-indigo-400 hover:shadow-xl transition-all group bg-white"
@@ -1752,7 +1989,7 @@ export const App: React.FC = () => {
                         const next = e.target.value;
                         setSku(next);
                         setProductSelectionOrigin('manual');
-                        const p = next ? PRODUCTS.find((x) => x.sku === next) : undefined;
+                        const p = next ? products.find((x) => x.sku === next) : undefined;
                         if (adText) {
                           runAudit(adText, p || null);
                         }
@@ -1765,7 +2002,7 @@ export const App: React.FC = () => {
                       title={productSelectionOrigin === 'demo' ? 'Synchronised to selected demo scenario' : 'Select target product'}
                     >
                       <option value="">Select Target Product…</option>
-                      {PRODUCTS.map((p) => (
+                      {products.map((p) => (
                         <option key={p.sku} value={p.sku}>
                           {p.sku} — {p.name} ({p.basePrice})
                         </option>
@@ -2522,88 +2759,123 @@ export const App: React.FC = () => {
             PAGE 3: CATALOGUE (APPROVED PRODUCTS)
         ──────────────────────────────────────────────────────── */}
         {page === 'catalogue' && (
-          <div className="space-y-6">
+          <div className="space-y-6 animate-fadeIn">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h1 className="text-xl font-bold text-slate-900">Approved Product Catalogue</h1>
+                <h1 className="text-xl font-bold text-slate-900">
+                  Approved Product Catalogue ({products.length})
+                </h1>
                 <p className="text-xs text-slate-500">
-                  Official NOVAWEAR database for ground-truth compliance checks
+                  Official database for {activeOrg.name} — specifications audited in real-time
                 </p>
               </div>
 
-              <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/60">
-                {['ALL', 'Shirts', 'T-Shirts', 'Trousers', 'Outerwear'].map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setCatFilter(cat)}
-                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      catFilter === cat
-                        ? 'bg-white text-slate-900 shadow-sm'
-                        : 'text-slate-500 hover:text-slate-800'
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  onClick={() => {
+                    setEditingProduct(null);
+                    setProductModalOpen(true);
+                  }}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-bold shadow-md shadow-indigo-500/20 transition-all cursor-pointer active:scale-95"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Product SKU</span>
+                </button>
+
+                <div className="flex items-center gap-1 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/60">
+                  {['ALL', 'Shirts', 'T-Shirts', 'Trousers', 'Outerwear'].map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setCatFilter(cat)}
+                      className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        catFilter === cat
+                          ? 'bg-white text-slate-900 shadow-sm'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {PRODUCTS.filter((p) => catFilter === 'ALL' || p.category === catFilter).map((p) => (
-                <div
-                  key={p.sku}
-                  className="creative-card p-5 flex flex-col justify-between hover:border-slate-300 transition-all"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="mono text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-md">
-                        {p.sku}
-                      </span>
-                      <span className="text-[10px] font-semibold text-slate-400">{p.category}</span>
-                    </div>
-
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-900">{p.name}</h3>
-                      <div className="text-base font-black text-emerald-600 mt-0.5">{p.basePrice}</div>
-                    </div>
-
-                    <div className="space-y-1 text-xs text-slate-600 pt-2 border-t border-slate-100">
-                      <div>
-                        <span className="text-slate-400 font-medium">Fabric:</span> {p.fabric}
-                      </div>
-                      <div>
-                        <span className="text-slate-400 font-medium">Fit:</span> {p.fit}
-                      </div>
-                      <div className="text-rose-500 text-[11px]">
-                        <span className="text-slate-400">Prohibited:</span>{' '}
-                        {p.unapprovedClaims.join(', ')}
-                      </div>
-                    </div>
-
-                    {p.activeCampaign && (
-                      <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs space-y-0.5">
-                        <span className="text-[10px] font-bold text-emerald-800 uppercase block">
-                          Active Campaign
-                        </span>
-                        <div className="font-bold text-emerald-950">
-                          {p.activeCampaign.code} ({p.activeCampaign.price})
-                        </div>
-                        <div className="text-[10px] text-emerald-700">{p.activeCampaign.dates}</div>
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      setSku(p.sku);
-                      nav('audit');
-                    }}
-                    className="mt-4 w-full py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-900 hover:text-white text-xs font-bold text-slate-700 transition-colors cursor-pointer"
+              {products
+                .filter((p) => catFilter === 'ALL' || p.category === catFilter)
+                .map((p) => (
+                  <div
+                    key={p.sku}
+                    className="creative-card p-5 flex flex-col justify-between hover:border-indigo-300 transition-all group"
                   >
-                    Audit for this SKU →
-                  </button>
-                </div>
-              ))}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="mono text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-md">
+                          {p.sku}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => {
+                              setEditingProduct(p);
+                              setProductModalOpen(true);
+                            }}
+                            className="p-1 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                            title="Edit Product"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteProduct(p.sku)}
+                            className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                            title="Delete Product"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h3 className="text-sm font-bold text-slate-900">{p.name}</h3>
+                        <div className="text-base font-black text-emerald-600 mt-0.5">{p.basePrice}</div>
+                      </div>
+
+                      <div className="space-y-1 text-xs text-slate-600 pt-2 border-t border-slate-100">
+                        <div>
+                          <span className="text-slate-400 font-medium">Fabric:</span> {p.fabric}
+                        </div>
+                        <div>
+                          <span className="text-slate-400 font-medium">Fit:</span> {p.fit}
+                        </div>
+                        <div className="text-rose-500 text-[11px]">
+                          <span className="text-slate-400">Prohibited:</span>{' '}
+                          {p.unapprovedClaims.join(', ')}
+                        </div>
+                      </div>
+
+                      {p.activeCampaign && (
+                        <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs space-y-0.5">
+                          <span className="text-[10px] font-bold text-emerald-800 uppercase block">
+                            Active Campaign
+                          </span>
+                          <div className="font-bold text-emerald-950">
+                            {p.activeCampaign.code} ({p.activeCampaign.price})
+                          </div>
+                          <div className="text-[10px] text-emerald-700">{p.activeCampaign.dates}</div>
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setSku(p.sku);
+                        nav('audit');
+                      }}
+                      className="mt-4 w-full py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-900 hover:text-white text-xs font-bold text-slate-700 transition-colors cursor-pointer"
+                    >
+                      Audit for this SKU →
+                    </button>
+                  </div>
+                ))}
             </div>
           </div>
         )}
@@ -2612,61 +2884,121 @@ export const App: React.FC = () => {
             PAGE 4: POLICY RULES (RULEBOOK)
         ──────────────────────────────────────────────────────── */}
         {page === 'rules' && (
-          <div className="space-y-6">
+          <div className="space-y-6 animate-fadeIn">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h1 className="text-xl font-bold text-slate-900">Governance Policy Rulebook</h1>
+                <h1 className="text-xl font-bold text-slate-900">
+                  Governance Policy Rulebook ({rules.length})
+                </h1>
                 <p className="text-xs text-slate-500">
-                  Legal, commercial, and operational constraints enforced by Integrix AI
+                  Executable legal, commercial, and operational constraints enforced by Integrix AI for {activeOrg.name}
                 </p>
               </div>
-              <div className="relative w-full sm:w-64">
-                <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Filter rules..."
-                  value={ruleQ}
-                  onChange={(e) => setRuleQ(e.target.value)}
-                  className="w-full pl-9 pr-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 outline-none focus:border-indigo-500"
-                />
+
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  onClick={() => {
+                    setEditingRule(null);
+                    setRuleModalOpen(true);
+                  }}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-bold shadow-md shadow-indigo-500/20 transition-all cursor-pointer active:scale-95"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Create Policy Rule</span>
+                </button>
+
+                <div className="relative w-full sm:w-60">
+                  <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Filter rules..."
+                    value={ruleQ}
+                    onChange={(e) => setRuleQ(e.target.value)}
+                    className="w-full pl-9 pr-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 outline-none focus:border-indigo-500"
+                  />
+                </div>
               </div>
             </div>
 
             <div className="space-y-3.5">
-              {RULES.filter(
-                (r) =>
-                  !ruleQ ||
-                  r.title.toLowerCase().includes(ruleQ.toLowerCase()) ||
-                  r.id.toLowerCase().includes(ruleQ.toLowerCase())
-              ).map((r) => (
-                <div key={r.id} className="creative-card p-5 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="mono text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-md">
-                        {r.id}
-                      </span>
-                      <h3 className="text-sm font-bold text-slate-900">{r.title}</h3>
-                    </div>
-                    <PillBadge>{r.cat}</PillBadge>
-                  </div>
-                  <p className="text-xs text-slate-600">{r.desc}</p>
+              {rules
+                .filter(
+                  (r) =>
+                    !ruleQ ||
+                    r.title.toLowerCase().includes(ruleQ.toLowerCase()) ||
+                    r.id.toLowerCase().includes(ruleQ.toLowerCase()) ||
+                    r.cat.toLowerCase().includes(ruleQ.toLowerCase())
+                )
+                .map((r) => (
+                  <div key={r.id} className="creative-card p-5 space-y-3 group">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="mono text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-md">
+                          {r.id}
+                        </span>
+                        <h3 className="text-sm font-bold text-slate-900">{r.title}</h3>
+                        {r.isActive === false && (
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                            Paused
+                          </span>
+                        )}
+                      </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-2">
-                    <div className="p-3.5 rounded-xl bg-rose-50/70 border border-rose-100">
-                      <span className="text-[10px] font-bold text-rose-600 uppercase block mb-1">
-                        Non-Compliant Example
-                      </span>
-                      <p className="mono font-semibold text-rose-950">{r.bad}</p>
+                      <div className="flex items-center gap-2">
+                        <PillBadge
+                          color={
+                            r.severity === 'CRITICAL' ? 'rose' : r.severity === 'WARNING' ? 'amber' : 'indigo'
+                          }
+                        >
+                          {r.severity || 'CRITICAL'}
+                        </PillBadge>
+                        <PillBadge>{r.cat}</PillBadge>
+
+                        <button
+                          onClick={() => handleToggleRule(r.id)}
+                          className="px-2.5 py-1 rounded-lg border border-slate-200 text-[11px] font-semibold hover:bg-slate-50 transition-colors cursor-pointer text-slate-600"
+                          title="Toggle Active / Paused enforcement"
+                        >
+                          {r.isActive !== false ? 'Active' : 'Enable'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingRule(r);
+                            setRuleModalOpen(true);
+                          }}
+                          className="p-1 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                          title="Edit Rule"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteRule(r.id)}
+                          className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                          title="Delete Rule"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
-                    <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-100">
-                      <span className="text-[10px] font-bold text-emerald-600 uppercase block mb-1">
-                        Approved Standard
-                      </span>
-                      <p className="mono font-semibold text-emerald-950">{r.good}</p>
+
+                    <p className="text-xs text-slate-600 leading-relaxed">{r.desc}</p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-2">
+                      <div className="p-3.5 rounded-xl bg-rose-50/70 border border-rose-100">
+                        <span className="text-[10px] font-bold text-rose-600 uppercase block mb-1">
+                          Non-Compliant Example Copy
+                        </span>
+                        <p className="mono font-semibold text-rose-950">{r.bad}</p>
+                      </div>
+                      <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-100">
+                        <span className="text-[10px] font-bold text-emerald-600 uppercase block mb-1">
+                          Approved Standard Specification
+                        </span>
+                        <p className="mono font-semibold text-emerald-950">{r.good}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
             </div>
           </div>
         )}
@@ -2679,10 +3011,10 @@ export const App: React.FC = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h1 className="text-xl font-bold text-slate-900">
-                  Compliance Validation Suite (7 Creatives)
+                  Compliance Validation Suite ({tests.length} Creatives)
                 </h1>
                 <p className="text-xs text-slate-500">
-                  Standardized verification creatives — select any ad to run an instant compliance audit
+                  Standardized verification creatives for {activeOrg.name} — select any ad to run an instant compliance audit
                 </p>
               </div>
               <button
@@ -2690,7 +3022,7 @@ export const App: React.FC = () => {
                 className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition-all cursor-pointer flex items-center gap-2 self-start sm:self-auto"
               >
                 <FlaskConical className="w-4 h-4 text-amber-300" />
-                <span>Execute All 7 Scenarios</span>
+                <span>Execute All {tests.length} Scenarios</span>
               </button>
             </div>
 
@@ -2701,7 +3033,7 @@ export const App: React.FC = () => {
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-              {TESTS.map((t) => (
+              {tests.map((t) => (
                 <div
                   key={t.id}
                   className="creative-card p-4 flex flex-col justify-between hover:border-indigo-300 hover:shadow-lg transition-all"
@@ -2758,7 +3090,7 @@ export const App: React.FC = () => {
                 ← Return to Dashboard
               </button>
             </div>
-            <CreativeAuditPage />
+            <CreativeAuditPage organisation={activeOrg.name} />
           </div>
         )}
 
@@ -2781,7 +3113,7 @@ export const App: React.FC = () => {
                 ← Return to Dashboard
               </button>
             </div>
-            <TextAuditPage />
+            <TextAuditPage organisation={activeOrg.name} />
           </div>
         )}
 
@@ -2858,25 +3190,55 @@ export const App: React.FC = () => {
             PAGE 11: SETTINGS
         ──────────────────────────────────────────────────────── */}
         {page === 'settings' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-xl font-bold text-slate-900">System Settings & Multi-Tenant Scope</h1>
-                <p className="text-xs text-slate-500">
-                  Organization configuration, data-source mode, and persistence parameters
-                </p>
-              </div>
-              <button
-                onClick={() => nav('home')}
-                className="text-xs font-bold text-indigo-600 hover:underline cursor-pointer flex items-center gap-1"
-              >
-                ← Return to Dashboard
-              </button>
-            </div>
-            <SettingsPage />
-          </div>
+          <SettingsPage
+            organisations={organisations}
+            activeOrg={activeOrg}
+            onSwitchOrg={handleSwitchOrg}
+            onOpenAddOrg={() => {
+              setEditingOrg(null);
+              setOrgModalOpen(true);
+            }}
+            onOpenEditOrg={(org) => {
+              setEditingOrg(org);
+              setOrgModalOpen(true);
+            }}
+            onDeleteOrg={handleDeleteOrg}
+          />
         )}
       </main>
+
+      {/* ── Governance Modals & Toast Notification ── */}
+      <OrgModal
+        isOpen={orgModalOpen}
+        onClose={() => {
+          setOrgModalOpen(false);
+          setEditingOrg(null);
+        }}
+        onSave={handleSaveOrg}
+        initialData={editingOrg}
+      />
+
+      <RuleModal
+        isOpen={ruleModalOpen}
+        onClose={() => {
+          setRuleModalOpen(false);
+          setEditingRule(null);
+        }}
+        onSave={handleSaveRule}
+        initialData={editingRule}
+      />
+
+      <ProductModal
+        isOpen={productModalOpen}
+        onClose={() => {
+          setProductModalOpen(false);
+          setEditingProduct(null);
+        }}
+        onSave={handleSaveProduct}
+        initialData={editingProduct}
+      />
+
+      <ToastNotification message={toastMessage} onDismiss={() => setToastMessage(null)} />
 
       {/* ════════════════════════════════════════════════════════
           IMAGE ZOOM MODAL
