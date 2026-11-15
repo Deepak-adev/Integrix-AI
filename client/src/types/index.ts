@@ -56,6 +56,12 @@ export interface AuditResult {
   };
   extractedContent: ExtractedAdContent;
   findings: Finding[];
+  executedRules?: string[];
+  policyRulesExecuted?: boolean;
+  analysisEngine?: string;
+  aiAnalysis?: any;
+  persisted?: boolean;
+  idempotentReplay?: boolean;
   metadata: {
     organisation: string;
     publicationChannel?: string;
@@ -94,3 +100,12 @@ export interface RepositoryStats {
   indexedPolicies: { id: string; name: string; status: string }[];
 }
 
+export interface RecentSubmissionSummary {
+  submissionId: string;
+  filename?: string;
+  overallStatus: 'PASS' | 'FAIL' | 'NEEDS_VERIFICATION';
+  createdAt: string;
+  totalFindings: number;
+  sourceType: 'CREATIVE_FILE' | 'RAW_TEXT';
+  sku?: string;
+}

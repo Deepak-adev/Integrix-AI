@@ -1,11 +1,12 @@
 import { Finding, ExtractedAdContent, AuditSubmissionMetadata } from '../types/index.js';
-import { repositoryLoader } from '../services/ingestion/repository-loader.js';
+import type { AuditDataSource } from '../services/audit-engine/audit-data-source.interface.js';
 
 export function evaluateRule004(
   extracted: ExtractedAdContent,
-  metadata?: AuditSubmissionMetadata
+  metadata: AuditSubmissionMetadata | undefined,
+  dataSource: AuditDataSource
 ): Finding | null {
-  const ruleDef = repositoryLoader.getRule('NW-RULE-004');
+  const ruleDef = dataSource.getRule('NW-RULE-004');
   const deliveryStatements = extracted.deliveryStatements;
 
   if (!deliveryStatements || deliveryStatements.length === 0) {

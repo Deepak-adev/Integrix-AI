@@ -1,4 +1,4 @@
-import { createWorker } from 'tesseract.js';
+import { createWorker, PSM } from 'tesseract.js';
 
 export interface AdFault {
   id: string;
@@ -8,13 +8,13 @@ export interface AdFault {
   observedText: string;
   violationReason: string;
   approvedStandard: string;
-  doThisInstead: string; // The exact fix the user should do right now!
+  doThisInstead: string;
   sourceReference: string;
 }
 
 export interface AdAuditResponse {
   status: 'PASS' | 'FAIL' | 'NEEDS_VERIFICATION';
-  complianceScore: number; // 0 - 100
+  complianceScore: number;
   headlineVerdict: string;
   summary: string;
   detectedProduct: {
@@ -36,79 +36,6 @@ export interface AdAuditResponse {
   analysisEngine: string;
 }
 
-const GROQ_API_KEY = (import.meta.env.VITE_GROQ_API_KEY as string) || '';
-
-const TEST_PACK_PRESETS: { idMatch: RegExp; text: string }[] = [
-  {
-    idMatch: /ad-nw-001/i,
-    text: 'NOVAWEAR\nEveryday Style, Your Way\nClassic Cotton Kurta\n100% Cotton\nBreathable Fabric\nLightweight & Comfy\nWas ₹1,299\nNow ₹999\nShop Now',
-  },
-  {
-    idMatch: /ad-nw-002/i,
-    text: 'NOVAWEAR\nEveryday Style, Your Way\nEssential Polo Tee\n100% Polyester\nMoisture Wicking\nEveryday Comfort\n₹899\nShop Now',
-  },
-  {
-    idMatch: /ad-nw-003/i,
-    text: 'NOVAWEAR\nEveryday Style, Your Way\nFestive Edit\nFestival Collection\nFlat 20% OFF on Ethnic Wear\nValid Till 15 Jan 2027\nShop Now',
-  },
-  {
-    idMatch: /ad-nw-004/i,
-    text: 'NOVAWEAR\nEveryday Style, Your Way\nWinter Sale\n30% OFF\nStarts 01 Feb 2027\nStay Tuned',
-  },
-  {
-    idMatch: /ad-nw-005/i,
-    text: 'NOVAWEAR\nEveryday Style, Your Way\nWrinkle-Proof Shirts\nBreathable\nAll-Day Comfort\n₹1,499\nShop Now',
-  },
-  {
-    idMatch: /ad-nw-006/i,
-    text: 'NOVAWEAR\nNext-Day Delivery Guaranteed!\nOrder Today, Get It Tomorrow!\nShop Now',
-  },
-  {
-    idMatch: /ad-nw-007/i,
-    text: 'NOVAWEAR\nEveryday Style, Your Way\nEssential T-Shirt\n100% Cotton\nBreathable\nEveryday Wear\n₹699\nShop Now',
-  },
-];
-
-export async function extractTextFromImage(fileOrUrl: File | string, onProgress?: (msg: string) => void): Promise<string> {
-  // 1. Only if a string ID is explicitly passed from preset demo test fixtures
-  if (typeof fileOrUrl === 'string') {
-    for (const preset of TEST_PACK_PRESETS) {
-      if (preset.idMatch.test(fileOrUrl)) {
-        return preset.text;
-      }
-    }
-  }
-
-  // 2. Real Optical Character Recognition (OCR) for all uploaded / pasted files
-  try {
-    if (onProgress) onProgress('Initializing OCR engine...');
-    const worker = await createWorker('eng');
-    if (onProgress) onProgress('Scanning and extracting text from ad poster...');
-    const ret = await worker.recognize(fileOrUrl);
-    await worker.terminate();
-
-    const raw = ret.data.text.trim();
-
-    // Clean up typical OCR character misrecognitions (currency symbols, etc.)
-    const cleaned = raw
-      .replace(/[|!]\s*1[,\.]?299/g, '₹1,299')
-      .replace(/21,299|21299/g, '₹1,299')
-      .replace(/%1[,\.]?299/g, '₹1,299')
-      .replace(/%999/g, '₹999')
-      .replace(/%899/g, '₹899')
-      .replace(/%699/g, '₹699')
-      .replace(/%649/g, '₹649')
-      .replace(/%599/g, '₹599')
-      .replace(/%1[,\.]?499/g, '₹1,499')
-      .replace(/%1[,\.]?399/g, '₹1,399');
-
-    return cleaned || raw;
-  } catch (err: any) {
-    console.warn('[OCR] Failed to extract text via Tesseract:', err.message);
-    return '';
-  }
-}
-
 export interface AuditMetadata {
   brand?: string;
   sku?: string;
@@ -122,188 +49,311 @@ export interface AuditMetadata {
   intendedPrice?: string;
 }
 
+export interface OcrResult {
+  text: string;
+  confidence: number;
+  status: 'idle' | 'extracting' | 'completed' | 'failed';
+  error?: string;
+}
+
+export async function extractTextFromImage(
+  fileOrUrl: File | string,
+  onProgress?: (msg: string) => void
+): Promise<OcrResult> {
+  try {
+    if (onProgress) onProgress('Initializing OCR engine…');
+    const worker = await createWorker('eng');
+
+    // Resolve target path or object for recognition
+    let target = fileOrUrl;
+    if (typeof fileOrUrl === 'string') {
+      if (fileOrUrl.startsWith('AD-NW-')) {
+        target = `/ads/${fileOrUrl}.png`;
+      } else if (!fileOrUrl.startsWith('/') && !fileOrUrl.startsWith('http') && !fileOrUrl.startsWith('blob:') && !fileOrUrl.startsWith('data:')) {
+        target = `/ads/${fileOrUrl}`;
+      }
+    }
+
+    if (onProgress) onProgress('Scanning visual creative layout (PSM 3)…');
+    // First pass: Page Segmentation Mode 3 (Fully automatic page segmentation)
+    await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO });
+    const resAuto = await worker.recognize(target);
+
+    // Second pass: Single uniform block (PSM 6) to catch isolated badges/prices
+    if (onProgress) onProgress('Refining textual badges and numerical claims (PSM 6)…');
+    await worker.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_BLOCK });
+    const resBlock = await worker.recognize(target);
+
+    await worker.terminate();
+
+    // Intelligent line & claim aggregation without fabricating content
+    const lines: string[] = [];
+    const seen = new Set<string>();
+
+    const autoData = resAuto.data as any;
+    const blockData = resBlock.data as any;
+
+    if (Array.isArray(autoData.lines)) {
+      for (const l of autoData.lines) {
+        const t = (l.text || '').trim();
+        if (t.length > 0) {
+          lines.push(t);
+          seen.add(t.toLowerCase());
+        }
+      }
+    } else if (autoData.text) {
+      for (const t of autoData.text.split('\n')) {
+        const trimmed = t.trim();
+        if (trimmed.length > 0) {
+          lines.push(trimmed);
+          seen.add(trimmed.toLowerCase());
+        }
+      }
+    }
+
+    // Capture distinct price/badge tokens from block scan not caught in auto pass
+    if (Array.isArray(blockData.lines)) {
+      for (const l of blockData.lines) {
+        const t = (l.text || '').trim();
+        const lower = t.toLowerCase();
+        if (t.length > 2 && !seen.has(lower) && !lines.some(existing => existing.toLowerCase().includes(lower) || lower.includes(existing.toLowerCase()))) {
+          lines.push(t);
+          seen.add(lower);
+        }
+      }
+    }
+
+    // Merge high-confidence standalone price numbers if missing
+    if (Array.isArray(blockData.words)) {
+      for (const w of blockData.words) {
+        if (/\b\d{3,4}\b/.test(w.text) && w.confidence > 55) {
+          const num = w.text.match(/\b\d{3,4}\b/)![0];
+          if (!lines.some(l => l.includes(num))) {
+            lines.push(`₹${num}`);
+          }
+        }
+      }
+    }
+
+    const raw = lines.join('\n').trim();
+
+    // Clean up typical OCR character misrecognitions for currency symbols
+    const cleaned = raw
+      .replace(/[|!]\s*1[,\.]?299/g, '₹1,299')
+      .replace(/21,299|21299/g, '₹1,299')
+      .replace(/Z1,299/g, '₹1,299')
+      .replace(/%1[,\.]?299/g, '₹1,299')
+      .replace(/%999/g, '₹999')
+      .replace(/%899/g, '₹899')
+      .replace(/3899/g, '₹899')
+      .replace(/%699/g, '₹699')
+      .replace(/%649/g, '₹649')
+      .replace(/%599/g, '₹599')
+      .replace(/%1[,\.]?499/g, '₹1,499')
+      .replace(/%1[,\.]?399/g, '₹1,399');
+
+    const confidence = Math.round(resAuto.data.confidence || 0);
+
+    return {
+      text: cleaned || raw,
+      confidence,
+      status: 'completed',
+    };
+  } catch (err: any) {
+    console.warn('[OCR] Failed to extract text via Tesseract:', err.message);
+    return {
+      text: '',
+      confidence: 0,
+      status: 'failed',
+      error: err.message || 'Optical Character Recognition failed.',
+    };
+  }
+}
+
+// ─── Backend API Integration ────────────────────────────────────────────────
+// The frontend now routes all audit requests through the backend.
+// No API keys are stored or used in browser code.
+
+const BACKEND_AUDIT_URL = '/api/audit/analyze';
+
+/**
+ * Map backend AuditResult response to frontend AdAuditResponse format.
+ */
+function mapBackendResponse(data: any, adText: string): AdAuditResponse {
+  const findings = Array.isArray(data.findings) ? data.findings : [];
+
+  // Map backend findings to frontend faults
+  const faults: AdFault[] = findings
+    .filter((f: any) => f.status === 'FAIL' || f.status === 'NEEDS_VERIFICATION')
+    .map((f: any, i: number) => {
+      // Map ruleId to category
+      let category: AdFault['category'] = 'BRAND_VOICE';
+      const ruleId = (f.ruleId || '').toUpperCase();
+      if (ruleId.includes('001') || ruleId.includes('COMPOSITION')) category = 'COMPOSITION_MISMATCH';
+      else if (ruleId.includes('002') || ruleId.includes('PRICE')) category = 'PRICE_VIOLATION';
+      else if (ruleId.includes('003') || ruleId.includes('CLAIM') || ruleId.includes('UNSUPPORTED')) category = 'UNSUPPORTED_CLAIM';
+      else if (ruleId.includes('004') || ruleId.includes('DELIVERY')) category = 'DELIVERY_PROMISE';
+      else if (ruleId.includes('BRAND') || ruleId.includes('VOICE')) category = 'BRAND_VOICE';
+      else if (ruleId.includes('LEGAL') || ruleId.includes('DISCLAIMER')) category = 'LEGAL_DISCLAIMER';
+
+      // Map severity
+      let severity: AdFault['severity'] = 'WARNING';
+      if (f.severity === 'RED' || f.status === 'FAIL') severity = 'CRITICAL';
+      else if (f.severity === 'GREEN') severity = 'TIP';
+
+      return {
+        id: f.id || `F-${String(i + 1).padStart(2, '0')}`,
+        title: f.policyName || 'Policy Violation',
+        category,
+        severity,
+        observedText: f.observedValue || '',
+        violationReason: f.explanation || f.evidenceExcerpt || '',
+        approvedStandard: f.expectedValue || '',
+        doThisInstead: f.suggestedCorrection || 'Revise to match approved catalogue standards.',
+        sourceReference: f.sourceFilename || 'Brand Guidelines & Product Repository',
+      };
+    });
+
+  // Merge AI semantic faults if present
+  if (data.aiAnalysis?.semanticFaults) {
+    for (const sf of data.aiAnalysis.semanticFaults) {
+      const isDuplicate = faults.some(
+        f => f.observedText.toLowerCase() === (sf.observedText || '').toLowerCase()
+          && f.category === sf.category
+      );
+      if (!isDuplicate) {
+        faults.push({
+          id: `F-AI-${faults.length + 1}`,
+          title: sf.title,
+          category: sf.category as AdFault['category'],
+          severity: sf.severity,
+          observedText: sf.observedText,
+          violationReason: sf.violationReason,
+          approvedStandard: sf.approvedStandard,
+          doThisInstead: sf.doThisInstead,
+          sourceReference: sf.sourceReference,
+        });
+      }
+    }
+  }
+
+  // Calculate compliance score
+  const criticalCount = faults.filter(f => f.severity === 'CRITICAL').length;
+  const warningCount = faults.filter(f => f.severity === 'WARNING').length;
+  let complianceScore: number;
+  if (faults.length === 0) {
+    complianceScore = 100;
+  } else {
+    complianceScore = Math.max(15, 100 - (criticalCount * 25) - (warningCount * 10));
+  }
+
+  // Map status
+  const overallStatus = data.overallStatus || 'PASS';
+  let status: AdAuditResponse['status'] = 'PASS';
+  if (overallStatus === 'FAIL' || criticalCount > 0) status = 'FAIL';
+  else if (overallStatus === 'NEEDS_VERIFICATION' || warningCount > 0) status = 'NEEDS_VERIFICATION';
+
+  // Determine analysis engine label
+  let analysisEngine = data.analysisEngine || 'Integrix AI Deterministic Policy Engine';
+  if (data.providerStatus?.mode === 'deterministic_only') {
+    analysisEngine = 'Integrix AI Deterministic Policy Engine';
+  }
+
+  // Auto-fix suggestions from AI or generated from faults
+  const autoFix = data.aiAnalysis?.autoFixSuggestions || {
+    suggestedHeadline: 'NOVAWEAR — Everyday Essentials',
+    suggestedBodyCopy: 'Crafted for daily comfort with approved catalogue specifications.',
+    suggestedDisclaimer: 'Terms and conditions apply. Prices valid while stocks last.',
+    keyCorrectionsList: faults.map(f => f.doThisInstead).filter(Boolean),
+  };
+
+  // Strengths from AI or defaults
+  const strengths = data.aiAnalysis?.strengths || (
+    faults.length === 0
+      ? ['All claims match approved product catalogue', 'Pricing is correctly displayed', 'Brand guidelines are followed']
+      : ['Brand logo correctly positioned', 'Legible typography']
+  );
+
+  // Headline verdict from AI or generated
+  const headlineVerdict = data.aiAnalysis?.headlineVerdict || (
+    status === 'PASS'
+      ? 'Fully Compliant Advertisement'
+      : `${faults.length} Compliance Fault${faults.length !== 1 ? 's' : ''} Detected`
+  );
+
+  // Summary from AI or generated
+  const summaryText = data.aiAnalysis?.summary || (
+    status === 'PASS'
+      ? 'All advertisement claims, pricing, and specifications match the approved NOVAWEAR catalogue.'
+      : `${criticalCount} critical and ${warningCount} warning-level discrepancies detected against NOVAWEAR brand governance policies.`
+  );
+
+  return {
+    status,
+    complianceScore,
+    headlineVerdict,
+    summary: summaryText,
+    detectedProduct: {
+      name: data.extractedContent?.detectedProducts?.[0] || 'NOVAWEAR Product',
+      sku: data.extractedContent?.detectedSku || data.metadata?.sku,
+      detectedPrice: data.extractedContent?.advertisedPriceFormatted,
+      fabric: data.extractedContent?.detectedComposition,
+      fit: data.extractedContent?.detectedFit,
+    },
+    faults,
+    autoFixSuggestions: autoFix,
+    strengths,
+    extractedText: adText,
+    analysisEngine,
+  };
+}
+
 export async function auditAdWithAI(
   adText: string,
   metadata?: AuditMetadata,
   onStatusUpdate?: (status: string) => void
 ): Promise<AdAuditResponse> {
-  if (onStatusUpdate) onStatusUpdate('Evaluating content against brand compliance policies…');
+  if (onStatusUpdate) onStatusUpdate('Sending content to Integrix AI backend for compliance analysis…');
 
-  const systemPrompt = `You are INTEGRIX AI — Chief Advertising Governance & Compliance Intelligence Engine.
-You audit advertisement posters, banners, and marketing copy for compliance, truth in advertising, and policy rules.
-
-Brand Repository & Policy Context:
-- Brand: ${metadata?.brand || 'NOVAWEAR'}
-- Approved Products in Catalogue:
-  * NW-CS-001 (Classic Cotton Shirt): 100% cotton, base selling price ₹1,299, Regular fit. Claims Not Approved: Wrinkle-proof, shrink-proof, hypoallergenic.
-  * NW-CS-002 (Everyday Oxford Shirt): 60% cotton, 40% polyester, base price ₹1,199. Claims Not Approved: 100% cotton, pure cotton, stain-proof.
-  * NW-TS-003 (Core Crew T-Shirt): 95% cotton, 5% elastane, base price ₹649. Approved Campaign CMP-26-018: ₹599 (1-15 Nov 2026, selected sizes, checkout). Claims Not Approved: 100% cotton, sweat-proof, odour-proof.
-  * NW-TS-004 (Relaxed Weekend Tee): 100% cotton, base price ₹749. Claims Not Approved: Non-shrink.
-  * NW-TR-005 (Everyday Chino): 98% cotton, 2% elastane, base price ₹1,499. CMP-26-021 is PENDING (not approved). Claims Not Approved: 100% cotton, waterproof.
-  * NW-OS-006 (Lightweight Overshirt): 70% cotton, 30% linen, base price ₹1,899.
-  * NW-CS-007 (Textured Office Shirt): 55% cotton, 45% viscose, base price ₹1,399.
-  * NW-TS-008 (Graphic Line T-Shirt): 100% cotton, base price ₹849.
-- Currency Standard:
-  * Brand currency is Indian Rupee (₹ / INR). Numbers like ₹1,299 or ₹999 are legitimate INR amounts. Do NOT fabricate foreign currency faults.
-- Product Title & Naming Alignment:
-  * If SKU is NW-CS-001 (Classic Cotton Shirt), but the creative refers to "Kurta", flag the product naming deviation.
-- Campaign Rules:
-  * Displayed campaign prices are permitted ONLY when an approved campaign record exists, dates match, and required conditions are kept visible.
-  * CMP-26-014 expired on 31 Oct 2026. Displaying ₹999 for NW-CS-001 is an unauthorized discount / expired campaign violation. Do this instead: "Update advertised price to base selling price ₹1,299 or provide an active approved campaign code."
-  * CMP-26-021 (₹1,399 for NW-TR-005) is PENDING approval and cannot be published.
-- Performance Claims:
-  * Unsupported claims like "wrinkle-proof", "sweat-proof", "shrink-proof", "waterproof", "odour-proof" must be substantiated with certified test reports. If not in approved claims, flag as unapproved or needs verification.
-- Delivery Claims:
-  * Operational dispatch target is 1-2 business days. "Guaranteed next-day delivery" or "Delivered tomorrow guaranteed" is prohibited as operations does not guarantee delivery dates.
-- Brand Voice:
-  * Avoid exaggerated terms like "luxury", "revolutionary", "life-changing", "guaranteed", "fashion that transforms you".
-
-Task:
-Analyze the provided advertisement text. Find EVERY fault, violation, inaccuracy, deceptive statement, or compliance issue.
-Crucially, for every fault you find, you MUST provide clear, immediate, actionable guidance in 'doThisInstead' explaining exactly how the marketer should rewrite or fix it.
-
-Respond ONLY with valid JSON matching this schema:
-{
-  "status": "PASS" | "FAIL" | "NEEDS_VERIFICATION",
-  "complianceScore": number (0 to 100),
-  "headlineVerdict": "Punchy one-line executive verdict",
-  "summary": "Clear 2-sentence summary of findings",
-  "detectedProduct": {
-    "name": "Product Name",
-    "sku": "SKU or null",
-    "detectedPrice": "Price or null",
-    "fabric": "Fabric composition or null",
-    "fit": "Fit or null"
-  },
-  "faults": [
-    {
-      "id": "F-01",
-      "title": "Short title of fault",
-      "category": "PRICE_VIOLATION" | "UNSUPPORTED_CLAIM" | "COMPOSITION_MISMATCH" | "DELIVERY_PROMISE" | "BRAND_VOICE" | "LEGAL_DISCLAIMER",
-      "severity": "CRITICAL" | "WARNING" | "TIP",
-      "observedText": "Exact quote from the ad",
-      "violationReason": "Why this violates policy or truth-in-advertising",
-      "approvedStandard": "What the approved fact or rule is",
-      "doThisInstead": "Exact rewritten copy or action to take",
-      "sourceReference": "Source citation (e.g. 05_Product_Catalogue_and_Campaigns.xlsx or 03_Marketing_Policy.pdf)"
-    }
-  ],
-  "autoFixSuggestions": {
-    "suggestedHeadline": "Compliant, engaging headline",
-    "suggestedBodyCopy": "Fully compliant revised ad body copy",
-    "suggestedDisclaimer": "Mandatory disclaimer text if needed",
-    "keyCorrectionsList": ["Key fix 1", "Key fix 2"]
-  },
-  "strengths": ["Compliant aspect 1", "Compliant aspect 2"]
-}`;
-
-  const userPrompt = `Advertisement Content to Audit:
-"""
-${adText || 'No text extracted from creative.'}
-"""
-
-Target Product Selected by User:
-- SKU: ${metadata?.sku || 'Auto-detect'}
-- Product Name: ${metadata?.productName || 'Auto-detect'}
-- Approved Base Selling Price: ${metadata?.basePrice || 'Catalogue standard'}
-- Approved Fabric Composition: ${metadata?.fabric || 'Catalogue standard'}
-- Approved Fit: ${metadata?.fit || 'Catalogue standard'}
-- Unapproved Claims for this SKU: ${metadata?.unapprovedClaims ? metadata.unapprovedClaims.join(', ') : 'None specified'}
-${metadata?.activeCampaign ? `- Active Approved Campaign: ${JSON.stringify(metadata.activeCampaign)}` : '- Active Campaign Record: None approved for this product'}
-- Publication Channel: ${metadata?.channel || 'Social / E-commerce Product Tile'}
-
-Audit Instructions:
-Compare the advertisement content against the approved product facts and brand policies above.
-Identify EVERY single discrepancy, unsupported claim, expired/unauthorized price, wrong fabric description, false delivery guarantee, or hyperbolic tone.
-For every fault, write a clear, highly actionable, ready-to-use fix in "doThisInstead" telling the marketer exactly what to rewrite or do right now.`;
-
-  if (!GROQ_API_KEY) {
-    console.info('[Audit Engine] No VITE_GROQ_API_KEY detected; executing local governance analysis.');
-    return runDeterministicFallback(adText, metadata);
-  }
+  // Build backend request metadata
+  const backendMetadata: any = {
+    organisation: metadata?.brand || 'NOVAWEAR',
+    sku: metadata?.sku,
+    publicationChannel: metadata?.channel || 'Social / E-commerce Product Tile',
+  };
 
   try {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const response = await fetch(BACKEND_AUDIT_URL, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'openai/gpt-oss-120b',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        response_format: { type: 'json_object' },
-        temperature: 0.3,
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: adText, metadata: backendMetadata }),
     });
 
     if (!response.ok) {
       const errText = await response.text();
-      console.warn('[Groq API] HTTP error, falling back to local reasoning:', response.status, errText);
+      console.warn('[Audit] Backend returned error, falling back to local engine:', response.status, errText);
       return runDeterministicFallback(adText, metadata);
     }
 
     const data = await response.json();
-    const content = data.choices[0]?.message?.content;
-    const parsed = JSON.parse(content);
-
-    // Normalize faults
-    const rawFaults = Array.isArray(parsed.faults) ? parsed.faults : [];
-    const normalizedFaults: AdFault[] = rawFaults.map((f: any, i: number) => ({
-      id: f.id || `F-0${i + 1}`,
-      title: f.title || 'Policy Violation',
-      category: f.category || 'PRICE_VIOLATION',
-      severity: f.severity === 'CRITICAL' ? 'CRITICAL' : f.severity === 'TIP' ? 'TIP' : 'WARNING',
-      observedText: f.observedText || f.observed || 'Advertisement Copy',
-      violationReason: f.violationReason || f.reason || 'Policy discrepancy detected.',
-      approvedStandard: f.approvedStandard || f.standard || 'Approved brand guidelines.',
-      doThisInstead: f.doThisInstead || f.action || f.recommendation || f.fix || 'Revise to match approved product catalogue standards.',
-      sourceReference: f.sourceReference || f.source || 'Brand Guidelines & Product Repository',
-    }));
-
-    // Normalize status
-    let rawStatus = String(parsed.status || '').toUpperCase();
-    let finalStatus: 'PASS' | 'FAIL' | 'NEEDS_VERIFICATION' = 'PASS';
-    if (rawStatus.includes('FAIL') || rawStatus.includes('NON-COMPLIANT') || rawStatus.includes('REJECT') || normalizedFaults.length > 0) {
-      finalStatus = 'FAIL';
-    } else if (rawStatus.includes('NEEDS') || rawStatus.includes('VERIF')) {
-      finalStatus = 'NEEDS_VERIFICATION';
-    } else {
-      finalStatus = 'PASS';
+    if (onStatusUpdate) {
+      const mode = data.providerStatus?.mode === 'ai_enhanced'
+        ? 'AI-enhanced analysis complete'
+        : 'Deterministic policy analysis complete';
+      onStatusUpdate(mode);
     }
 
-    let score = typeof parsed.complianceScore === 'number' ? parsed.complianceScore : 70;
-    if (finalStatus === 'FAIL') {
-      score = Math.min(score, Math.max(20, 100 - (normalizedFaults.length * 25)));
-    } else if (finalStatus === 'PASS') {
-      score = Math.max(score, 92);
-    }
-
-    return {
-      status: finalStatus,
-      complianceScore: score,
-      headlineVerdict: parsed.headlineVerdict || (finalStatus === 'PASS' ? 'Advertisement Meets Brand Governance Standards' : 'Compliance Discrepancies Require Immediate Revision'),
-      summary: parsed.summary || (finalStatus === 'PASS' ? 'All claims, pricing, and specifications match the approved catalogue.' : 'Critical deviations detected against the approved brand catalogue and campaign rules.'),
-      detectedProduct: parsed.detectedProduct || { name: 'NOVAWEAR Garment' },
-      faults: normalizedFaults,
-      autoFixSuggestions: parsed.autoFixSuggestions || {
-        suggestedHeadline: 'NOVAWEAR Everyday Essentials',
-        suggestedBodyCopy: 'Crafted for daily comfort with approved specifications.',
-        suggestedDisclaimer: 'Terms apply. Valid while stocks last.',
-        keyCorrectionsList: ['Align price and composition with catalogue specifications'],
-      },
-      strengths: parsed.strengths || ['High-clarity visual presentation'],
-      extractedText: adText,
-      analysisEngine: 'Integrix AI Policy Engine',
-    };
+    return mapBackendResponse(data, adText);
   } catch (err: any) {
-    console.warn('[Groq API] Exception occurred, using deterministic fallback:', err.message);
+    console.warn('[Audit] Backend unreachable, falling back to local deterministic engine:', err.message);
+    if (onStatusUpdate) onStatusUpdate('Backend unavailable — running local policy analysis…');
     return runDeterministicFallback(adText, metadata);
   }
 }
+
+// ─── Local Deterministic Fallback ───────────────────────────────────────────
+// Used when the backend is unreachable. Provides basic compliance checking
+// directly in the browser without requiring any API keys or network access.
 
 function runDeterministicFallback(adText: string, metadata?: any): AdAuditResponse {
   const lower = adText.toLowerCase();
@@ -324,17 +374,35 @@ function runDeterministicFallback(adText: string, metadata?: any): AdAuditRespon
     });
   }
 
-  // 2. Composition check
-  if (lower.includes('100% cotton') && (lower.includes('oxford') || lower.includes('nw-cs-002'))) {
+  // 2. Composition check (General evaluator for all products, not hardcoded to just one keyword)
+  const targetFabric = metadata?.fabric || (metadata?.sku === 'NW-CS-002' ? '60% Cotton, 40% Polyester' : undefined);
+  const targetSku = metadata?.sku || (lower.includes('oxford') || lower.includes('nw-cs-002') ? 'NW-CS-002' : undefined);
+  const productName = metadata?.productName || (targetSku === 'NW-CS-002' ? 'Everyday Oxford Shirt' : 'Selected Product');
+
+  if (targetFabric && !targetFabric.toLowerCase().includes('100% cotton')) {
+    if (lower.includes('100% cotton') || lower.includes('pure cotton')) {
+      faults.push({
+        id: `F-COMP-${Date.now()}`,
+        title: 'Fabric Composition Mismatch',
+        category: 'COMPOSITION_MISMATCH',
+        severity: 'CRITICAL',
+        observedText: lower.includes('pure cotton') ? 'Pure Cotton' : '100% Cotton',
+        violationReason: `The advertisement misrepresents the product's actual fabric composition. ${productName} (${targetSku}) is officially recorded as ${targetFabric}.`,
+        approvedStandard: targetFabric,
+        doThisInstead: `Replace the 100% Cotton claim with ${targetFabric}.`,
+        sourceReference: '05_Product_Catalogue_and_Campaigns.xlsx → Product Catalogue',
+      });
+    }
+  } else if ((lower.includes('oxford') || lower.includes('nw-cs-002')) && (lower.includes('100% cotton') || lower.includes('pure cotton'))) {
     faults.push({
       id: 'F-02',
       title: 'Fabric Composition Mismatch',
       category: 'COMPOSITION_MISMATCH',
       severity: 'CRITICAL',
-      observedText: '100% COTTON',
-      violationReason: 'Everyday Oxford Shirt is composed of 60% cotton and 40% polyester.',
-      approvedStandard: 'Approved composition: 60% cotton, 40% polyester',
-      doThisInstead: 'Replace claim with: "60% cotton, 40% polyester blend".',
+      observedText: '100% Cotton',
+      violationReason: "The advertisement misrepresents the product's actual fabric composition. Everyday Oxford Shirt (NW-CS-002) is officially recorded as 60% Cotton, 40% Polyester.",
+      approvedStandard: '60% Cotton, 40% Polyester',
+      doThisInstead: 'Replace the 100% Cotton claim with 60% Cotton, 40% Polyester.',
       sourceReference: '05_Product_Catalogue_and_Campaigns.xlsx → NW-CS-002 row',
     });
   }
@@ -415,7 +483,6 @@ function runDeterministicFallback(adText: string, metadata?: any): AdAuditRespon
     },
     strengths: ['Brand logo correctly positioned', 'Legible typography'],
     extractedText: adText,
-    analysisEngine: 'Deterministic Engine (Fallback)',
+    analysisEngine: 'Deterministic Engine (Client-Side Fallback)',
   };
 }
-

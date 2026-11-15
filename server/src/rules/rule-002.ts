@@ -1,11 +1,12 @@
 import { Finding, ExtractedAdContent, AuditSubmissionMetadata, CampaignFact } from '../types/index.js';
-import { repositoryLoader } from '../services/ingestion/repository-loader.js';
+import type { AuditDataSource } from '../services/audit-engine/audit-data-source.interface.js';
 
 export function evaluateRule002(
   extracted: ExtractedAdContent,
-  metadata?: AuditSubmissionMetadata
+  metadata: AuditSubmissionMetadata | undefined,
+  dataSource: AuditDataSource
 ): Finding | null {
-  const ruleDef = repositoryLoader.getRule('NW-RULE-002');
+  const ruleDef = dataSource.getRule('NW-RULE-002');
   const price = extracted.detectedPrice;
   const sku = extracted.detectedSku || metadata?.sku;
   const pubDateStr = metadata?.publicationDate || '2026-11-13';
@@ -17,7 +18,7 @@ export function evaluateRule002(
   }
 
   // 1. Resolve product facts
-  const product = sku ? repositoryLoader.getProductBySku(sku) : undefined;
+  const product = sku ? dataSource.getProductBySku(sku) : undefined;
   const basePrice = product ? product.sellingPriceInr : undefined;
 
   // 2. Resolve campaign records
@@ -25,11 +26,11 @@ export function evaluateRule002(
   let campaign: CampaignFact | undefined;
 
   if (campaignId) {
-    campaign = repositoryLoader.getCampaignById(campaignId);
+    campaign = dataSource.getCampaignById(campaignId);
   }
   if (!campaign && sku) {
     // Find campaign matching price or sku
-    const skuCampaigns = repositoryLoader.getCampaignsForSku(sku);
+    const skuCampaigns = dataSource.getCampaignsForSku(sku);
     campaign = skuCampaigns.find(c => c.campaignPriceInr === price) || skuCampaigns[0];
   }
 
@@ -155,7 +156,7 @@ export function evaluateRule002(
   }
 
   // 5. Scenario C: Price does not match base price and no valid campaign found
-  const pastCampaigns = sku ? repositoryLoader.getCampaignsForSku(sku) : [];
+  const pastCampaigns = sku ? dataSource.getCampaignsForSku(sku) : [];
   const expiredCampaign = pastCampaigns.find(c => c.endDate < pubDateStr);
 
   let explanation = `Displayed price ₹${price.toLocaleString('en-IN')} does not match the ${sku || 'product'} base selling price of ₹${basePrice ? basePrice.toLocaleString('en-IN') : '1,299'}.`;

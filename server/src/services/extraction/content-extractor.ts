@@ -1,11 +1,16 @@
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import mammoth from 'mammoth';
 import { PDFParse } from 'pdf-parse';
 import { createWorker } from 'tesseract.js';
 import { GoogleGenAI } from '@google/genai';
 import { ExtractedAdContent, AuditSubmissionMetadata } from '../../types/index.js';
-import { repositoryLoader } from '../ingestion/repository-loader.js';
+import type { AuditDataSource } from '../audit-engine/audit-data-source.interface.js';
+import { FileAuditDataSource } from '../audit-engine/file-audit-data-source.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export class ContentExtractor {
   private tesseractWorker: any = null;
@@ -29,6 +34,7 @@ export class ContentExtractor {
     // 2. PDF extraction
     if (ext === '.pdf' || fileType.includes('pdf')) {
       const dataBuffer = fs.readFileSync(filePath);
+      // pdf-parse v2: named class export, getText() returns { text, pages }
       const parser = new PDFParse({ data: dataBuffer });
       const textRes = await parser.getText();
       const extractedText = textRes.text.trim();
@@ -76,10 +82,11 @@ export class ContentExtractor {
   public async parseContent(
     rawText: string,
     metadata?: AuditSubmissionMetadata,
-    method: ExtractedAdContent['extractionMethod'] = 'HYBRID'
+    method: ExtractedAdContent['extractionMethod'] = 'HYBRID',
+    productSource: AuditDataSource = new FileAuditDataSource()
   ): Promise<ExtractedAdContent> {
     // 1. Run deterministic regex / pattern extraction
-    const deterministicData = this.deterministicExtraction(rawText, metadata);
+    const deterministicData = this.deterministicExtraction(rawText, metadata, productSource);
 
     // 2. If Gemini API key is available, enrich with Gemini
     const apiKey = process.env.GEMINI_API_KEY;
@@ -103,7 +110,7 @@ export class ContentExtractor {
     };
   }
 
-  private deterministicExtraction(text: string, metadata?: AuditSubmissionMetadata): Omit<ExtractedAdContent, 'rawText' | 'extractionMethod'> {
+  private deterministicExtraction(text: string, metadata: AuditSubmissionMetadata | undefined, productSource: AuditDataSource): Omit<ExtractedAdContent, 'rawText' | 'extractionMethod'> {
     const lower = text.toLowerCase();
 
     // A. Detect SKU
@@ -116,9 +123,11 @@ export class ContentExtractor {
       }
     }
 
-    // B. Detect Products
+    // B. Detect Products (scoped to the selected organisation's product source)
     const detectedProducts: string[] = [];
-    const products = repositoryLoader.getAllProducts();
+    const products = productSource.getAllProducts();
+    const productExists = (name: string) => products.some(p => p.productName.toLowerCase() === name.toLowerCase());
+    const skuExists = (sku: string) => products.some(p => p.sku === sku);
 
     for (const prod of products) {
       if (text.toLowerCase().includes(prod.productName.toLowerCase())) {
@@ -127,51 +136,87 @@ export class ContentExtractor {
       }
     }
 
-    // Common synonyms / shorthand in ads
+    // Common synonyms / shorthand in ads (only applied when the product exists
+    // in the selected organisation's source — never selects an unrelated product)
     if (lower.includes('classic cotton shirt') || lower.includes('cotton shirt')) {
-      if (!detectedProducts.includes('Classic Cotton Shirt')) detectedProducts.push('Classic Cotton Shirt');
-      if (!detectedSku) detectedSku = 'NW-CS-001';
+      if (productExists('Classic Cotton Shirt') && !detectedProducts.includes('Classic Cotton Shirt')) detectedProducts.push('Classic Cotton Shirt');
+      if (!detectedSku && skuExists('NW-CS-001')) detectedSku = 'NW-CS-001';
     }
     if (lower.includes('everyday oxford shirt') || lower.includes('oxford shirt')) {
-      if (!detectedProducts.includes('Everyday Oxford Shirt')) detectedProducts.push('Everyday Oxford Shirt');
-      if (!detectedSku) detectedSku = 'NW-CS-002';
+      if (productExists('Everyday Oxford Shirt') && !detectedProducts.includes('Everyday Oxford Shirt')) detectedProducts.push('Everyday Oxford Shirt');
+      if (!detectedSku && skuExists('NW-CS-002')) detectedSku = 'NW-CS-002';
     }
     if (lower.includes('core crew tee') || lower.includes('core crew t-shirt')) {
-      if (!detectedProducts.includes('Core Crew T-Shirt')) detectedProducts.push('Core Crew T-Shirt');
-      if (!detectedSku) detectedSku = 'NW-TS-003';
+      if (productExists('Core Crew T-Shirt') && !detectedProducts.includes('Core Crew T-Shirt')) detectedProducts.push('Core Crew T-Shirt');
+      if (!detectedSku && skuExists('NW-TS-003')) detectedSku = 'NW-TS-003';
     }
     if (lower.includes('relaxed weekend tee')) {
-      if (!detectedProducts.includes('Relaxed Weekend Tee')) detectedProducts.push('Relaxed Weekend Tee');
-      if (!detectedSku) detectedSku = 'NW-TS-004';
+      if (productExists('Relaxed Weekend Tee') && !detectedProducts.includes('Relaxed Weekend Tee')) detectedProducts.push('Relaxed Weekend Tee');
+      if (!detectedSku && skuExists('NW-TS-004')) detectedSku = 'NW-TS-004';
     }
     if (lower.includes('everyday chino') || lower.includes('chino')) {
-      if (!detectedProducts.includes('Everyday Chino')) detectedProducts.push('Everyday Chino');
-      if (!detectedSku) detectedSku = 'NW-TR-005';
+      if (productExists('Everyday Chino') && !detectedProducts.includes('Everyday Chino')) detectedProducts.push('Everyday Chino');
+      if (!detectedSku && skuExists('NW-TR-005')) detectedSku = 'NW-TR-005';
     }
 
     // C. Detect Price
+    // Strategy: Extract ALL prices from the text, then identify the actual selling
+    // price using contextual clues (e.g. "Was X / Now Y", "Original X / Sale Y").
+    // The selling price is what the consumer actually pays — typically the lowest
+    // price when a Was/Now pattern is present.
     let detectedPrice: number | undefined;
     let advertisedPriceFormatted: string | undefined;
 
     // Must ignore percentages like 100%, 20%, 60%
-    const pricePatterns = [
-      /(?:₹|rs\.?|inr|(?<=\s|^)n)\s*([0-9]{1,2},[0-9]{3}|[0-9]{3,4})(?!\s*%)/i,
-      /\b([0-9]{1,2},[0-9]{3})\b(?!\s*%)/,
-      /\b(2299|1899|1499|1399|1299|1199|1099|999|899|849|749|649|599)\b(?!\s*%)/
-    ];
+    const allPricePattern = /(?:₹|rs\.?|inr)?\s*([0-9]{1,2},[0-9]{3}|[0-9]{3,5})(?!\s*%)/gi;
+    const knownPriceValues = new Set([2299, 1899, 1499, 1399, 1299, 1199, 1099, 999, 899, 849, 749, 699, 649, 599]);
+    const allPrices: number[] = [];
 
-    for (const pat of pricePatterns) {
-      const match = text.match(pat);
-      if (match) {
-        const rawNum = match[1].replace(/,/g, '');
-        const val = parseFloat(rawNum);
-        if (!isNaN(val) && val >= 200 && val <= 50000) {
-          detectedPrice = val;
-          advertisedPriceFormatted = `₹${val.toLocaleString('en-IN')}`;
-          break;
-        }
+    let priceMatch: RegExpExecArray | null;
+    while ((priceMatch = allPricePattern.exec(text)) !== null) {
+      const rawNum = priceMatch[1].replace(/,/g, '');
+      const val = parseFloat(rawNum);
+      if (!isNaN(val) && val >= 200 && val <= 50000) {
+        allPrices.push(val);
+      } else if (!isNaN(val) && knownPriceValues.has(val)) {
+        allPrices.push(val);
       }
     }
+
+    // Also try standalone known price values (e.g. bare "999" without ₹ prefix)
+    for (const kp of knownPriceValues) {
+      const barePattern = new RegExp(`\\b${kp}\\b(?!\\s*%)`, 'g');
+      if (barePattern.test(text) && !allPrices.includes(kp)) {
+        allPrices.push(kp);
+      }
+    }
+
+    if (allPrices.length > 0) {
+      // Detect "Was X / Now Y" or "Original X / Sale Y" or "MRP X / Price Y" patterns
+      const wasNowPattern = /(?:was|original|mrp|from|old\s*price|earlier)[^₹\d]*(?:₹\s*)?([0-9]{1,2},[0-9]{3}|[0-9]{3,5})[^₹\d]*(?:now|sale|offer|price|our\s*price|new\s*price|today)[^₹\d]*(?:₹\s*)?([0-9]{1,2},[0-9]{3}|[0-9]{3,5})/i;
+      const wasNowMatch = text.match(wasNowPattern);
+
+      if (wasNowMatch) {
+        // "Was X Now Y" pattern: Y is the selling price
+        const sellingPriceRaw = wasNowMatch[2].replace(/,/g, '');
+        const sellingVal = parseFloat(sellingPriceRaw);
+        if (!isNaN(sellingVal)) {
+          detectedPrice = sellingVal;
+        }
+      } else if (allPrices.length >= 2) {
+        // Multiple prices without explicit Was/Now — the lowest is likely the selling price
+        // (common in ad layouts: crossed-out higher price + prominent lower price)
+        detectedPrice = Math.min(...allPrices);
+      } else {
+        // Single price — use it directly
+        detectedPrice = allPrices[0];
+      }
+
+      if (detectedPrice !== undefined) {
+        advertisedPriceFormatted = `₹${detectedPrice.toLocaleString('en-IN')}`;
+      }
+    }
+
 
     // D. Detect Fabric Composition
     let detectedComposition: string | undefined;

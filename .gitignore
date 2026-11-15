@@ -25,3 +25,9 @@ uploads/
 Thumbs.db
 .vscode/
 .idea/
+
+# Runtime audit uploads and generated files
+server/storage/
+
+# Temporary verification scripts
+scratch/

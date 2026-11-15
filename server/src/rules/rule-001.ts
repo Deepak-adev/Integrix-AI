@@ -1,11 +1,12 @@
 import { Finding, ExtractedAdContent, AuditSubmissionMetadata } from '../types/index.js';
-import { repositoryLoader } from '../services/ingestion/repository-loader.js';
+import type { AuditDataSource } from '../services/audit-engine/audit-data-source.interface.js';
 
 export function evaluateRule001(
   extracted: ExtractedAdContent,
-  metadata?: AuditSubmissionMetadata
+  metadata: AuditSubmissionMetadata | undefined,
+  dataSource: AuditDataSource
 ): Finding | null {
-  const ruleDef = repositoryLoader.getRule('NW-RULE-001');
+  const ruleDef = dataSource.getRule('NW-RULE-001');
   const sku = extracted.detectedSku || metadata?.sku;
 
   // If no composition claim detected, rule is not applicable unless SKU has specific requirements
@@ -32,7 +33,7 @@ export function evaluateRule001(
     };
   }
 
-  const product = repositoryLoader.getProductBySku(sku);
+  const product = dataSource.getProductBySku(sku);
   if (!product) {
     return {
       id: `FIND-001-${Date.now()}`,

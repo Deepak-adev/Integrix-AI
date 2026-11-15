@@ -1,11 +1,12 @@
 import { Finding, ExtractedAdContent, AuditSubmissionMetadata } from '../types/index.js';
-import { repositoryLoader } from '../services/ingestion/repository-loader.js';
+import type { AuditDataSource } from '../services/audit-engine/audit-data-source.interface.js';
 
 export function evaluateRule003(
   extracted: ExtractedAdContent,
-  metadata?: AuditSubmissionMetadata
+  metadata: AuditSubmissionMetadata | undefined,
+  dataSource: AuditDataSource
 ): Finding | null {
-  const ruleDef = repositoryLoader.getRule('NW-RULE-003');
+  const ruleDef = dataSource.getRule('NW-RULE-003');
   const sku = extracted.detectedSku || metadata?.sku;
   const claims = extracted.performanceClaims;
 
@@ -13,7 +14,7 @@ export function evaluateRule003(
     return null;
   }
 
-  const product = sku ? repositoryLoader.getProductBySku(sku) : undefined;
+  const product = sku ? dataSource.getProductBySku(sku) : undefined;
   const unapprovedClaims = product?.claimsNotApproved || [];
   const approvedClaims = product?.approvedClaims || [];
 
@@ -44,7 +45,6 @@ export function evaluateRule003(
     }
 
     // If claim is not approved or unsupported in repository
-    const policyDoc = repositoryLoader.getPolicyDocument('SRC-NW-003');
     const excerpt = `03_Marketing_and_Communication_Policy.pdf (Section 4): "Claims such as wrinkle-resistant, stain-resistant, sweat-wicking, shrink-proof or breathable must be supported by current product-specific test data or approved supplier certificates." Catalogue "Claims Not Approved" for ${sku || 'NW-CS-001'}: "${unapprovedClaims.join('; ')}".`;
 
     return {

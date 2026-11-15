@@ -10,27 +10,101 @@ import {
 
 const API_BASE = '/api/audit';
 
+export class ApiError extends Error {
+  status: number;
+  data: any;
+
+  constructor(status: number, message: string, data?: any) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.data = data;
+  }
+}
+
+/**
+ * Upload advertisement creative file and execute audit.
+ * Reaches POST /api/audit/upload.
+ */
 export async function uploadAndAudit(formData: FormData): Promise<AuditResult> {
+  let response: Response;
   try {
-    const response = await fetch(`${API_BASE}/upload`, {
+    response = await fetch(`${API_BASE}/upload`, {
       method: 'POST',
       body: formData,
     });
-    if (response.ok) {
-      return await response.json();
-    }
-  } catch (err) {
+  } catch (err: any) {
     console.warn('[API] Backend unreachable, falling back to client-side audit engine:', err);
+    // Fall back to client simulation only if backend server is offline
+    return clientSideUploadFallback(formData);
   }
 
-  // Client-side fallback for file upload
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({ error: `HTTP ${response.status} Error` }));
+    throw new ApiError(response.status, errorBody.error || errorBody.message || 'File audit failed', errorBody);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Audit raw advertisement text via POST /api/audit/analyze (AI & deterministic).
+ */
+export async function analyzeText(text: string, metadata?: any): Promise<AuditResult> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, metadata }),
+    });
+  } catch (err: any) {
+    console.warn('[API] Backend unreachable, falling back to client-side evaluation:', err);
+    const clientAudit = runClientSideScenarioAudit('SCENARIO-1');
+    return clientAudit.result;
+  }
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({ error: `HTTP ${response.status} Error` }));
+    throw new ApiError(response.status, errorBody.error || errorBody.message || 'Text audit failed', errorBody);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Audit raw text via legacy deterministic endpoint POST /api/audit/verify-text.
+ */
+export async function verifyRawText(text: string, metadata?: any): Promise<AuditResult> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}/verify-text`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, metadata }),
+    });
+  } catch (err: any) {
+    console.warn('[API] Backend unreachable, running in client-side mode:', err);
+    const clientAudit = runClientSideScenarioAudit('SCENARIO-1');
+    return clientAudit.result;
+  }
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({ error: `HTTP ${response.status} Error` }));
+    throw new ApiError(response.status, errorBody.error || errorBody.message || 'Text verification failed', errorBody);
+  }
+
+  return await response.json();
+}
+
+// Client-side fallback for offline mode
+function clientSideUploadFallback(formData: FormData): AuditResult {
   const file = formData.get('file') as File | null;
   const sku = (formData.get('sku') as string) || 'NW-CS-001';
   const channel = (formData.get('publicationChannel') as string) || 'NOVAWEAR website';
   const pubDate = (formData.get('publicationDate') as string) || '2026-11-13';
 
-  // Find matching scenario or run default evaluation
-  const matchingScenario = LOCAL_SCENARIOS.find(s => s.sku === sku) || LOCAL_SCENARIOS[0];
+  const matchingScenario = LOCAL_SCENARIOS.find((s) => s.sku === sku) || LOCAL_SCENARIOS[0];
   const clientAudit = runClientSideScenarioAudit(matchingScenario.id);
 
   return {
@@ -45,24 +119,6 @@ export async function uploadAndAudit(formData: FormData): Promise<AuditResult> {
       rulebookVersion: '0.1',
     },
   };
-}
-
-export async function auditText(text: string, metadata: any): Promise<AuditResult> {
-  try {
-    const response = await fetch(`${API_BASE}/verify-text`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, metadata }),
-    });
-    if (response.ok) {
-      return await response.json();
-    }
-  } catch (err) {
-    console.warn('[API] Backend unreachable, running in client-side mode:', err);
-  }
-
-  const clientAudit = runClientSideScenarioAudit('SCENARIO-1');
-  return clientAudit.result;
 }
 
 export async function getAcceptanceScenarios(): Promise<{
@@ -81,9 +137,12 @@ export async function getAcceptanceScenarios(): Promise<{
   return {
     scenarios: LOCAL_SCENARIOS,
     discrepancyDocumentation: {
-      issue: 'Discrepancy in Advertisement ID assignments between Sample Advertisement Test Pack (PDF) and Expected Audit Results (DOCX)',
-      detail: 'The Sample Advertisement Test Pack v0.1 defines AD-NW-001 as Compliant Product Ad and AD-NW-007 as Delivery Guarantee. In contrast, Expected Audit Results v0.1 defines AD-NW-001 as Price Mismatch and AD-NW-007 as Compliant Product Ad.',
-      solution: 'Integrix AI preserves both ID spaces, maps them explicitly, and deterministically audits content against actual repository facts.',
+      issue:
+        'Discrepancy in Advertisement ID assignments between Sample Advertisement Test Pack (PDF) and Expected Audit Results (DOCX)',
+      detail:
+        'The Sample Advertisement Test Pack v0.1 defines AD-NW-001 as Compliant Product Ad and AD-NW-007 as Delivery Guarantee. In contrast, Expected Audit Results v0.1 defines AD-NW-001 as Price Mismatch and AD-NW-007 as Compliant Product Ad.',
+      solution:
+        'Integrix AI preserves both ID spaces, maps them explicitly, and deterministically audits content against actual repository facts.',
     },
   };
 }

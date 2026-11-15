@@ -8,6 +8,17 @@ export type FindingStatus =
 
 export type FindingSeverity = 'RED' | 'AMBER' | 'GREEN';
 
+/**
+ * Trusted organisation context resolved server-side for the current request.
+ * Downstream services must receive this object rather than reading organisation
+ * identifiers from client-supplied request data.
+ */
+export interface OrganisationContext {
+  organisationId: string;
+  organisationSlug: string;
+  organisationName: string;
+}
+
 export interface ProductFact {
   sku: string;
   productName: string;
@@ -124,6 +135,8 @@ export interface AuditResult {
   };
   extractedContent: ExtractedAdContent;
   findings: Finding[];
+  /** Rule IDs whose evaluators actually ran for this audit (empty when no executable rules). */
+  executedRules: string[];
   metadata: {
     organisation: string;
     publicationChannel?: string;
@@ -134,10 +147,13 @@ export interface AuditResult {
     rulebookVersion: string;
   };
   discrepancyNote?: string;
+  aiAnalysis?: AuditAIAnalysis;
+  analysisEngine: string;
 }
 
 export interface AcceptanceScenario {
   id: string;
+  canonicalTestId?: string;
   testPackId: string;
   expectedAuditDocId: string;
   title: string;
@@ -151,5 +167,33 @@ export interface AcceptanceScenario {
   description: string;
   keyEvidence: string;
   suggestedCorrection: string;
+  posterAssetPath?: string;
+  posterFileHash?: string;
+  fixtureConflictNote?: string;
+}
+
+// ─── AI Analysis Extension ──────────────────────────────────────────────────
+// Attached to AuditResult when an AI provider is configured and available.
+export interface AuditAIAnalysis {
+  headlineVerdict: string;
+  summary: string;
+  autoFixSuggestions: {
+    suggestedHeadline: string;
+    suggestedBodyCopy: string;
+    suggestedDisclaimer: string;
+    keyCorrectionsList: string[];
+  };
+  strengths: string[];
+  semanticFaults: {
+    title: string;
+    category: string;
+    severity: 'CRITICAL' | 'WARNING' | 'TIP';
+    observedText: string;
+    violationReason: string;
+    approvedStandard: string;
+    doThisInstead: string;
+    sourceReference: string;
+  }[];
+  analysisEngine: string;
 }
 

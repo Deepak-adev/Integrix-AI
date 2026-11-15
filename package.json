@@ -7,7 +7,13 @@
     "dev": "npm --prefix client run dev",
     "start": "npm --prefix client run dev",
     "build": "npm --prefix client run build",
-    "preview": "npm --prefix client run preview"
+    "preview": "npm --prefix client run preview",
+    "server:install": "npm --prefix server install",
+    "server:dev": "npm --prefix server run dev",
+    "server:build": "npm --prefix server run build",
+    "server:start": "npm --prefix server run start",
+    "server:typecheck": "npm --prefix server run typecheck",
+    "install:all": "npm --prefix client install && npm --prefix server install"
   },
   "keywords": [
     "brand-governance",

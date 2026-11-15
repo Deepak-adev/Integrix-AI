@@ -576,7 +576,22 @@ export function runClientSideScenarioAudit(scenarioId: string): {
         : [],
     brandTerms: ['NOVAWEAR'],
     confidence: 0.98,
-    rawText: `NOVAWEAR Advertisement Creative — ${scenario.title}`,
+    rawText:
+      scenario.id === 'SCENARIO-1'
+        ? `NOVAWEAR\nTHE CLASSIC COTTON SHIRT\nAn easy everyday layer in 100% cotton. Regular fit. Made for repeat wear.\n₹1,299\nNOVAWEAR | NW-CS-001 | Regular fit`
+        : scenario.id === 'SCENARIO-2'
+        ? `NOVAWEAR\nTHE CLASSIC COTTON SHIRT\nYour everyday essential. 100% cotton. Regular fit.\n₹999\nShop now | NOVAWEAR | NW-CS-001`
+        : scenario.id === 'SCENARIO-3'
+        ? `NOVAWEAR\n100% COTTON. ALL DAY COMFORT.\nMeet the Everyday Oxford Shirt – a breathable 100% cotton essential for every day.\n₹1,199\nNOVAWEAR | NW-CS-002`
+        : scenario.id === 'SCENARIO-4'
+        ? `NOVAWEAR\nCORE CREW TEE\nA regular-fit everyday tee. Available in selected sizes.\n₹599\nCMP-26-018\nCampaign price valid 1–15 Nov 2026 on NOVAWEAR website and Instagram Shop. Selected sizes only. Price shown at checkout.\nNOVAWEAR | NW-TS-003`
+        : scenario.id === 'SCENARIO-5'
+        ? `NOVAWEAR\nEVERYDAY CHINO – LIMITED-TIME OFFER\nGet your pair today at our special campaign price.\n₹1,399\nCMP-26-021\nOffer ends 20 Nov 2026 | Shop now\nNOVAWEAR | NW-TR-005`
+        : scenario.id === 'SCENARIO-6'
+        ? `NOVAWEAR\nWRINKLE-PROOF. READY FOR ANYTHING.\nA shirt that stays perfectly smooth from morning to night.\n₹1,299\nNOVAWEAR | NW-CS-001`
+        : scenario.id === 'SCENARIO-7'
+        ? `NOVAWEAR\nORDER TODAY. DELIVERED TOMORROW. GUARANTEED.\nPlace your order now and receive it by tomorrow, wherever you are.\nNOVAWEAR | Delivery promise`
+        : `NOVAWEAR Advertisement Creative — ${scenario.title}`,
     extractionMethod: 'PDF_TEXT',
   };
 

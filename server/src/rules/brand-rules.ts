@@ -1,5 +1,4 @@
 import { Finding, ExtractedAdContent, AuditSubmissionMetadata } from '../types/index.js';
-import { repositoryLoader } from '../services/ingestion/repository-loader.js';
 
 export function evaluateBrandVoice(
   extracted: ExtractedAdContent,

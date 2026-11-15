@@ -1,0 +1,401 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ApprovalStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  ACTIVE
+  REJECTED
+  ARCHIVED
+}
+
+model Organisation {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  legalName   String?
+  status      String   @default("ACTIVE")
+  settings    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  memberships           OrganisationMembership[]
+  policySources         PolicySource[]
+  products              Product[]
+  campaigns             Campaign[]
+  policyRules           PolicyRule[]
+  ruleParameters        RuleParameter[]
+  ruleExceptions        RuleException[]
+  acceptanceScenarios   AcceptanceScenario[]
+  adSubmissions         AdSubmission[]
+  findings              Finding[]
+  rulebookReleases      RulebookRelease[]
+  rulebookReleaseRules  RulebookReleaseRule[]
+  rulebookReleaseSources RulebookReleaseSource[]
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  status    String   @default("ACTIVE")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships OrganisationMembership[]
+}
+
+model OrganisationMembership {
+  id             String   @id @default(cuid())
+  userId         String
+  organisationId String
+  role           String   @default("MEMBER")
+  status         String   @default("ACTIVE")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organisationId])
+  @@index([organisationId])
+}
+
+model PolicySource {
+  id             String   @id @default(cuid())
+  organisationId String
+  sourceId       String
+  title          String
+  filename       String
+  sourceType     String
+  storagePath    String?
+  mimeType       String?
+  extractedText  String?
+  pages          Json?
+  metadata       Json?
+  status         String   @default("ACTIVE")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@unique([organisationId, sourceId])
+  @@index([organisationId])
+}
+
+model Product {
+  id                 String   @id @default(cuid())
+  organisationId     String
+  sku                String
+  productName        String
+  composition        String
+  fit                String?
+  sizes              String[] @default([])
+  sellingPriceInr    Decimal
+  mrpInr             Decimal?
+  approvedClaims     String[] @default([])
+  claimsNotApproved  String[] @default([])
+  careInstructions   String?
+  status             String   @default("ACTIVE")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  campaigns     Campaign[]
+
+  @@unique([organisationId, sku])
+  @@index([organisationId])
+}
+
+model Campaign {
+  id                 String    @id @default(cuid())
+  organisationId     String
+  campaignId         String
+  sku                String
+  campaignPriceInr   Decimal
+  startDate          DateTime
+  endDate            DateTime
+  eligibleChannels   String[]  @default([])
+  conditionsText     String?
+  approvalStatus     String    @default("PENDING")
+  approvedBy         String?
+  approvedAt         DateTime?
+  status             String    @default("ACTIVE")
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  product       Product       @relation(fields: [organisationId, sku], references: [organisationId, sku])
+
+  @@unique([organisationId, campaignId])
+  @@index([organisationId])
+  @@index([organisationId, sku])
+  @@index([organisationId, approvalStatus])
+}
+
+model PolicyRule {
+  id                      String    @id @default(cuid())
+  organisationId          String
+  ruleId                  String
+  ruleVersion             String
+  ruleFamily              String?
+  ruleCategory            String?
+  componentId             String?
+  policyComponentId       String?
+  validationComponentId   String?
+  exceptionComponentId    String?
+  errorComponentId        String?
+  correctionComponentId   String?
+  policyText              String?
+  validationLogic         String?
+  exceptionText           String?
+  errorMessage            String?
+  correctionGuidance      String?
+  sourceIds               String[]  @default([])
+  referenceComponentIds   String[]  @default([])
+  severity                String    @default("WARNING")
+  engine                  String    @default("DETERMINISTIC")
+  executionMode           String    @default("ENFORCE")
+  requiredInputs          String[]  @default([])
+  passCriteria            String?
+  failCriteria            String?
+  reviewRequired          Boolean   @default(false)
+  status                  String    @default("DRAFT")
+  approvalStatus          ApprovalStatus @default(DRAFT)
+  approvedBy              String?
+  approvedAt              DateTime?
+  activatedBy             String?
+  activatedAt             DateTime?
+  effectiveFrom           DateTime?
+  effectiveTo             DateTime?
+  confidenceThreshold     Decimal?
+  evaluatorKey            String?
+  owner                   String?
+  testCaseId              String?
+  reasoning               String?
+  badExample              String?
+  goodExample             String?
+  metadata                Json?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@unique([organisationId, ruleId, ruleVersion])
+  @@index([organisationId])
+  @@index([organisationId, status])
+  @@index([organisationId, approvalStatus])
+}
+
+model RuleParameter {
+  id             String   @id @default(cuid())
+  organisationId String
+  parameterId    String
+  ruleId         String?
+  ruleVersion    String?
+  parameterName  String
+  parameterValue String
+  valueType      String   @default("STRING")
+  unit           String?
+  minValue       Decimal?
+  maxValue       Decimal?
+  description    String?
+  sourceId       String?
+  status         String   @default("ACTIVE")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@unique([organisationId, parameterId])
+  @@index([organisationId])
+  @@index([organisationId, ruleId, ruleVersion])
+}
+
+model RuleException {
+  id             String    @id @default(cuid())
+  organisationId String
+  exceptionId    String
+  ruleId         String?
+  ruleVersion    String?
+  exceptionName  String
+  conditionText  String?
+  approvedBy     String?
+  approvedAt     DateTime?
+  effectiveFrom  DateTime?
+  effectiveTo    DateTime?
+  status         String    @default("ACTIVE")
+  reason         String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@unique([organisationId, exceptionId])
+  @@index([organisationId])
+  @@index([organisationId, ruleId, ruleVersion])
+}
+
+model AcceptanceScenario {
+  id                    String    @id @default(cuid())
+  organisationId        String
+  testPackId            String
+  expectedAuditDocId    String?
+  title                 String
+  sku                   String?
+  publicationChannel    String?
+  publicationDate       DateTime?
+  creativeFilename      String?
+  creativeText          String?
+  creativeFilePath      String?
+  expectedOutcome       String
+  primaryRuleId         String?
+  expectedSeverity      String?
+  expectedEvidence      String?
+  expectedCorrection    String?
+  sortOrder             Int       @default(0)
+  status                String    @default("ACTIVE")
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@unique([organisationId, testPackId])
+  @@index([organisationId])
+}
+
+model AdSubmission {
+  id                      String    @id @default(cuid())
+  organisationId          String
+  submissionId            String
+  filename                String?
+  fileType                String?
+  fileSize                Int?
+  mimeType                String?
+  storagePath             String?
+  publicationChannel      String?
+  publicationDate         DateTime?
+  sku                     String?
+  advertisedPriceInr      Decimal?
+  advertisedComposition   String?
+  performanceClaims       String[]  @default([])
+  deliveryStatements      String[]  @default([])
+  extractedText           String?
+  extractedData           Json?
+  aiAnalysis              Json?
+  analysisEngine          String?
+  discrepancyNote         String?
+  rulebookVersion         String?
+  rulebookReleaseId       String?
+  archivedAt              DateTime?
+  overallStatus           String    @default("PASS")
+  totalFindings           Int       @default(0)
+  passedCount             Int       @default(0)
+  failedCount             Int       @default(0)
+  needsVerificationCount  Int       @default(0)
+  status                  String    @default("COMPLETED")
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  organisation    Organisation    @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+  findings         Finding[]
+  rulebookRelease  RulebookRelease? @relation(fields: [rulebookReleaseId], references: [id], onDelete: Restrict)
+
+  @@unique([organisationId, submissionId])
+  @@index([organisationId])
+  @@index([organisationId, createdAt])
+  @@index([organisationId, overallStatus])
+  @@index([organisationId, rulebookReleaseId])
+}
+
+model Finding {
+  id                String   @id @default(cuid())
+  organisationId    String
+  adSubmissionId    String
+  ruleId            String?
+  ruleVersion       String?
+  policyName        String
+  status            String
+  severity          String   @default("WARNING")
+  observedValue     String?
+  expectedValue     String?
+  explanation       String?
+  sourceFilename    String?
+  sourceLocator     String?
+  sourceId          String?
+  suggestedCorrection String?
+  evidenceExcerpt   String?
+  metadata          Json?
+  archivedAt        DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  organisation Organisation  @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+  adSubmission AdSubmission  @relation(fields: [adSubmissionId], references: [id], onDelete: Restrict)
+
+  @@index([organisationId, adSubmissionId])
+  @@index([organisationId, ruleId])
+  @@index([organisationId, ruleId, ruleVersion])
+}
+
+model RulebookRelease {
+  id             String         @id @default(cuid())
+  organisationId String
+  releaseId      String
+  status         ApprovalStatus @default(DRAFT)
+  description    String?
+  approvedBy     String?
+  approvedAt     DateTime?
+  activatedBy    String?
+  activatedAt    DateTime?
+  metadata       Json?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  organisation    Organisation           @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  rules           RulebookReleaseRule[]
+  sources         RulebookReleaseSource[]
+  adSubmissions   AdSubmission[]
+
+  @@unique([organisationId, releaseId])
+  @@index([organisationId, status])
+}
+
+model RulebookReleaseRule {
+  id             String   @id @default(cuid())
+  organisationId String
+  releaseId      String
+  ruleId         String
+  ruleVersion    String
+  addedAt        DateTime @default(now())
+  metadata       Json?
+
+  organisation Organisation    @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  release      RulebookRelease @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+
+  @@unique([organisationId, releaseId, ruleId, ruleVersion])
+  @@index([organisationId, releaseId])
+  @@index([organisationId, ruleId, ruleVersion])
+}
+
+model RulebookReleaseSource {
+  id             String   @id @default(cuid())
+  organisationId String
+  releaseId      String
+  sourceId       String
+  addedAt        DateTime @default(now())
+  metadata       Json?
+
+  organisation Organisation    @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  release      RulebookRelease @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+
+  @@unique([organisationId, releaseId, sourceId])
+  @@index([organisationId, releaseId])
+  @@index([organisationId, sourceId])
+}

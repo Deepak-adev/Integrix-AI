@@ -1,8 +1,12 @@
 import path from 'path';
+import { fileURLToPath } from 'url';
 import fs from 'fs';
 import xlsx from 'xlsx';
 import { PDFParse } from 'pdf-parse';
 import { ProductFact, CampaignFact, PolicyRuleDefinition } from '../../types/index.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 class RepositoryLoader {
   private products: Map<string, ProductFact> = new Map();
@@ -181,11 +185,12 @@ class RepositoryLoader {
       if (fs.existsSync(fullPath)) {
         try {
           const buffer = fs.readFileSync(fullPath);
+          // pdf-parse v2: named class export, getText() returns { text, pages }
           const parser = new PDFParse({ data: buffer });
           const textRes = await parser.getText();
           const pages: { pageNum: number; text: string }[] = [];
           if (textRes.pages && Array.isArray(textRes.pages)) {
-            textRes.pages.forEach((p: any) => pages.push({ pageNum: p.num || 1, text: p.text || '' }));
+            textRes.pages.forEach((p: any) => pages.push({ pageNum: p.num ?? 1, text: p.text ?? '' }));
           } else {
             pages.push({ pageNum: 1, text: textRes.text });
           }

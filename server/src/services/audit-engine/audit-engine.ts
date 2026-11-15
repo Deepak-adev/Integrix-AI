@@ -5,29 +5,39 @@ import {
   Finding,
   ExtractedAdContent,
 } from '../../types/index.js';
-import { repositoryLoader } from '../ingestion/repository-loader.js';
 import { contentExtractor } from '../extraction/content-extractor.js';
+import type { AuditDataSource } from './audit-data-source.interface.js';
+import { FileAuditDataSource } from './file-audit-data-source.js';
 import { evaluateRule001 } from '../../rules/rule-001.js';
 import { evaluateRule002 } from '../../rules/rule-002.js';
 import { evaluateRule003 } from '../../rules/rule-003.js';
 import { evaluateRule004 } from '../../rules/rule-004.js';
 import { evaluateBrandVoice } from '../../rules/brand-rules.js';
+import { aiAuditAnalyzer } from '../ai/ai-audit-analyzer.js';
+import type { AuditAIAnalysis } from '../../types/index.js';
 
 export class AuditEngine {
+  /**
+   * @param dataSource Explicit audit data source. Defaults to the file-based
+   * loader for backward compatibility. Database-backed sources must be supplied
+   * by trusted server-side orchestration (never from request data).
+   */
+  constructor(public readonly dataSource: AuditDataSource = new FileAuditDataSource()) {}
+
   public async auditFile(
     filePath: string,
     fileType: string,
     originalFilename: string,
     metadata?: AuditSubmissionMetadata
   ): Promise<AuditResult> {
-    // 1. Ensure repository is initialized
-    await repositoryLoader.initialize();
+    // 1. Ensure the selected data source is initialized
+    await this.dataSource.initialize();
 
     // 2. Extract content from file
     const { text: rawText, method } = await contentExtractor.extractRawContent(filePath, fileType);
 
     // 3. Structure & analyze extracted claims
-    const extractedContent = await contentExtractor.parseContent(rawText, metadata, method);
+    const extractedContent = await contentExtractor.parseContent(rawText, metadata, method, this.dataSource);
 
     // 4. Run policy & fact verification
     return this.evaluateExtractedContent(extractedContent, originalFilename, metadata);
@@ -39,22 +49,35 @@ export class AuditEngine {
     metadata?: AuditSubmissionMetadata
   ): AuditResult {
     const findings: Finding[] = [];
+    const executedRules: string[] = [];
 
-    // Rule 001: Fabric Composition Match
-    const f001 = evaluateRule001(extractedContent, metadata);
-    if (f001) findings.push(f001);
+    // Rule evaluators run only when the rule is present/executable in the
+    // selected data source. File mode exposes all loaded rules (legacy); database
+    // mode exposes only lifecycle-eligible (ACTIVE) rules, so DRAFT rules never
+    // reach evaluators and there is no silent file fallback.
+    if (this.dataSource.getRule('NW-RULE-001')) {
+      executedRules.push('NW-RULE-001');
+      const f001 = evaluateRule001(extractedContent, metadata, this.dataSource);
+      if (f001) findings.push(f001);
+    }
 
-    // Rule 002: Campaign Price Validity
-    const f002 = evaluateRule002(extractedContent, metadata);
-    if (f002) findings.push(f002);
+    if (this.dataSource.getRule('NW-RULE-002')) {
+      executedRules.push('NW-RULE-002');
+      const f002 = evaluateRule002(extractedContent, metadata, this.dataSource);
+      if (f002) findings.push(f002);
+    }
 
-    // Rule 003: Unsupported Performance Claims
-    const f003 = evaluateRule003(extractedContent, metadata);
-    if (f003) findings.push(f003);
+    if (this.dataSource.getRule('NW-RULE-003')) {
+      executedRules.push('NW-RULE-003');
+      const f003 = evaluateRule003(extractedContent, metadata, this.dataSource);
+      if (f003) findings.push(f003);
+    }
 
-    // Rule 004: Delivery Promises
-    const f004 = evaluateRule004(extractedContent, metadata);
-    if (f004) findings.push(f004);
+    if (this.dataSource.getRule('NW-RULE-004')) {
+      executedRules.push('NW-RULE-004');
+      const f004 = evaluateRule004(extractedContent, metadata, this.dataSource);
+      if (f004) findings.push(f004);
+    }
 
     // Brand Voice Restrictions
     const fBrand = evaluateBrandVoice(extractedContent, metadata);
@@ -64,7 +87,7 @@ export class AuditEngine {
     // ensure base SKU validation is recorded
     if (findings.length === 0 && (extractedContent.detectedSku || metadata?.sku)) {
       const sku = (extractedContent.detectedSku || metadata?.sku)!;
-      const product = repositoryLoader.getProductBySku(sku);
+      const product = this.dataSource.getProductBySku(sku);
       if (product) {
         findings.push({
           id: `FIND-BASE-${Date.now()}`,
@@ -130,6 +153,7 @@ export class AuditEngine {
       },
       extractedContent,
       findings,
+      executedRules,
       metadata: {
         organisation: metadata?.organisation || 'NOVAWEAR',
         publicationChannel: metadata?.publicationChannel || 'NOVAWEAR website',
@@ -140,7 +164,89 @@ export class AuditEngine {
         rulebookVersion: '0.1',
       },
       discrepancyNote,
+      analysisEngine: 'Integrix AI Deterministic Policy Engine',
     };
+  }
+
+  /**
+   * Full audit pipeline with AI semantic analysis.
+   * Used by the /api/audit/analyze endpoint.
+   */
+  public async analyzeText(
+    rawText: string,
+    metadata?: AuditSubmissionMetadata
+  ): Promise<AuditResult> {
+    await this.dataSource.initialize();
+
+    // 1. Parse and extract content deterministically
+    const extracted = await contentExtractor.parseContent(rawText, metadata, 'PDF_TEXT', this.dataSource);
+
+    // 2. Run deterministic rules
+    const result = this.evaluateExtractedContent(extracted, 'audit_studio_submission', metadata);
+
+    // 3. Run AI semantic analysis (if provider is available)
+    const aiResult = await aiAuditAnalyzer.analyze(extracted, metadata, result.findings, this.dataSource);
+
+    if (aiResult) {
+      // Merge AI analysis: attach full analysis and update engine label
+      const aiAnalysis: AuditAIAnalysis = {
+        headlineVerdict: aiResult.headlineVerdict,
+        summary: aiResult.summary,
+        autoFixSuggestions: aiResult.autoFixSuggestions,
+        strengths: aiResult.strengths,
+        semanticFaults: aiResult.semanticFaults,
+        analysisEngine: aiResult.analysisEngine,
+      };
+
+      result.aiAnalysis = aiAnalysis;
+      result.analysisEngine = `Deterministic Rules + ${aiResult.analysisEngine}`;
+
+      // Merge AI-detected faults that don't duplicate deterministic findings
+      for (const sf of aiResult.semanticFaults) {
+        const isDuplicate = result.findings.some(
+          f => f.ruleId.toLowerCase().includes(sf.category.toLowerCase().replace('_', '-'))
+            || (f.observedValue && sf.observedText && f.observedValue.toLowerCase().includes(sf.observedText.toLowerCase()))
+        );
+
+        if (!isDuplicate) {
+          result.findings.push({
+            id: `FIND-AI-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            ruleId: `AI-${sf.category}`,
+            policyName: sf.title,
+            status: sf.severity === 'CRITICAL' ? 'FAIL' : sf.severity === 'WARNING' ? 'NEEDS_VERIFICATION' : 'PASS',
+            severity: sf.severity === 'CRITICAL' ? 'RED' : sf.severity === 'WARNING' ? 'AMBER' : 'GREEN',
+            observedValue: sf.observedText,
+            expectedValue: sf.approvedStandard,
+            evidenceExcerpt: sf.violationReason,
+            sourceFilename: sf.sourceReference,
+            sourceLocator: sf.sourceReference,
+            explanation: sf.violationReason,
+            suggestedCorrection: sf.doThisInstead,
+            confidence: 0.85,
+          });
+        }
+      }
+
+      // Recount summary after merging AI findings
+      result.summary = {
+        total: result.findings.length,
+        pass: result.findings.filter(f => f.status === 'PASS').length,
+        fail: result.findings.filter(f => f.status === 'FAIL').length,
+        needsVerification: result.findings.filter(f => f.status === 'NEEDS_VERIFICATION').length,
+        notFound: result.findings.filter(f => f.status === 'NOT_FOUND').length,
+        conflicting: result.findings.filter(f => f.status === 'CONFLICTING').length,
+        notApplicable: result.findings.filter(f => f.status === 'NOT_APPLICABLE').length,
+      };
+
+      // Recalculate overall status (deterministic FAIL always wins)
+      if (result.summary.fail > 0) {
+        result.overallStatus = 'FAIL';
+      } else if (result.summary.needsVerification > 0 || result.summary.notFound > 0 || result.summary.conflicting > 0) {
+        result.overallStatus = 'NEEDS_VERIFICATION';
+      }
+    }
+
+    return result;
   }
 }
 
