@@ -109,3 +109,46 @@ export interface RecentSubmissionSummary {
   sourceType: 'CREATIVE_FILE' | 'RAW_TEXT';
   sku?: string;
 }
+
+export interface Organisation {
+  id: string;
+  name: string;
+  legalName: string;
+  slug: string;
+  industry: string;
+  brandTone: string;
+  currency: string;
+  region: string;
+  color: string;
+  complianceTolerance: 'Strict' | 'Standard' | 'Permissive';
+  isDefault?: boolean;
+}
+
+export interface PolicyRuleItem {
+  id: string;
+  title: string;
+  cat: string;
+  desc: string;
+  bad: string;
+  good: string;
+  severity: 'CRITICAL' | 'WARNING' | 'TIP';
+  isActive: boolean;
+  authoritySourceId?: string;
+  sourceLocator?: string;
+}
+
+export interface ProductItem {
+  sku: string;
+  name: string;
+  category: string;
+  basePrice: string;
+  fabric: string;
+  fit: string;
+  unapprovedClaims: string[];
+  activeCampaign?: {
+    code: string;
+    price: string;
+    dates: string;
+    conditions: string;
+  };
+}

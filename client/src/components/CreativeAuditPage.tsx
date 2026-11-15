@@ -20,7 +20,13 @@ import { AuditResultView } from './AuditResultView';
 const ALLOWED_EXTENSIONS = ['.pdf', '.docx', '.doc', '.png', '.jpg', '.jpeg', '.webp'];
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB
 
-export const CreativeAuditPage: React.FC = () => {
+interface CreativeAuditPageProps {
+  organisation?: string;
+}
+
+export const CreativeAuditPage: React.FC<CreativeAuditPageProps> = ({
+  organisation = 'NOVAWEAR',
+}) => {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [publicationChannel, setPublicationChannel] = useState('NOVAWEAR website');
@@ -93,7 +99,7 @@ export const CreativeAuditPage: React.FC = () => {
 
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('organisation', 'NOVAWEAR');
+    formData.append('organisation', organisation);
     if (publicationChannel) formData.append('publicationChannel', publicationChannel);
     if (publicationDate) formData.append('publicationDate', publicationDate);
     if (sku.trim()) formData.append('sku', sku.trim());

@@ -36,7 +36,13 @@ const PRESET_SAMPLES = [
   },
 ];
 
-export const TextAuditPage: React.FC = () => {
+interface TextAuditPageProps {
+  organisation?: string;
+}
+
+export const TextAuditPage: React.FC<TextAuditPageProps> = ({
+  organisation = 'NOVAWEAR',
+}) => {
   const [text, setText] = useState('');
   const [sku, setSku] = useState('NW-CS-001');
   const [submissionId, setSubmissionId] = useState('');
@@ -58,8 +64,9 @@ export const TextAuditPage: React.FC = () => {
     setAuditResult(null);
 
     const metadata: any = {
+      organisation,
       sku: sku.trim() || undefined,
-      publicationChannel: 'NOVAWEAR website',
+      publicationChannel: `${organisation} website`,
       publicationDate: '2026-11-13',
     };
     if (submissionId.trim()) {
