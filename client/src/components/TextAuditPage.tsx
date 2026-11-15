@@ -85,7 +85,7 @@ export const TextAuditPage: React.FC = () => {
 
   const handlePresetSelect = (preset: (typeof PRESET_SAMPLES)[0]) => {
     setText(preset.text);
-    if (preset.sku) setSku(preset.sku);
+    setSku(preset.sku || '');
     setErrorMessage(null);
   };
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Building2,
   FolderOpen,
@@ -49,6 +49,8 @@ export type LifecycleStage =
   | 'audit'
   | 'report'
   | 'decision';
+
+export type StageStatus = 'COMPLETED' | 'CURRENT' | 'UPCOMING' | 'NEEDS_ATTENTION';
 
 export interface OrgProfile {
   name: string;
@@ -115,12 +117,12 @@ export interface AdminDecision {
   exceptionExpiry?: string;
 }
 
-// Stage-to-app-page mapping for direct navigation
+// Stage-to-app-page mapping for direct navigation if requested
 export const STAGE_PAGE_MAP: Partial<Record<LifecycleStage, string>> = {
-  audit: "audit",
-  report: "audit-history",
-  repository: "rules",
-  decision: "approval-centre",
+  audit: 'audit',
+  report: 'audit-history',
+  repository: 'rules',
+  decision: 'approval-centre',
 };
 
 interface LifecycleManagerProps {
@@ -139,19 +141,49 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
   onNavigateToAudit,
   onNavigateTo,
 }) => {
-  // 1. Org State
+  // ─────────────────────────────────────────────────────────────
+  // 1. STATE INITIALIZATION & LOCALSTORAGE PERSISTENCE
+  // ─────────────────────────────────────────────────────────────
+
+  // Default Organisation
   const defaultOrg: OrgProfile = {
     name: 'NOVAWEAR Retail Private Limited',
     industry: 'Retail & Fashion Apparel',
     location: 'Chennai, Tamil Nadu, India',
-    description: 'Direct-to-consumer sustainable apparel brand offering premium cotton shirts, polos, and chinos with strict claims substantiation standards.',
+    description:
+      'Direct-to-consumer sustainable apparel brand offering premium cotton shirts, polos, and chinos with strict claims substantiation standards.',
     website: 'https://novawear.demo.integrix.ai',
     isSample: true,
   };
-  const [org, setOrg] = useState<OrgProfile>(defaultOrg);
 
-  // 2. Sector State
-  const [selectedSector, setSelectedSector] = useState<string>('retail');
+  const [org, setOrg] = useState<OrgProfile>(() => {
+    try {
+      const saved = localStorage.getItem('integrix_org_profile');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return defaultOrg;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('integrix_org_profile', JSON.stringify(org));
+    } catch {}
+  }, [org]);
+
+  // Sector State
+  const [selectedSector, setSelectedSector] = useState<string>(() => {
+    try {
+      return localStorage.getItem('integrix_selected_sector') || 'retail';
+    } catch {}
+    return 'retail';
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('integrix_selected_sector', selectedSector);
+    } catch {}
+  }, [selectedSector]);
+
   const [sectorModalInfo, setSectorModalInfo] = useState<SectorItem | null>(null);
 
   const sectors: SectorItem[] = [
@@ -229,7 +261,7 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
     },
   ];
 
-  // 3. Document Upload State
+  // Document Upload State
   const initialDocs: SampleDoc[] = [
     {
       id: 'doc-1',
@@ -287,10 +319,24 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
       status: 'uploaded',
     },
   ];
-  const [docs, setDocs] = useState<SampleDoc[]>(initialDocs);
+
+  const [docs, setDocs] = useState<SampleDoc[]>(() => {
+    try {
+      const saved = localStorage.getItem('integrix_uploaded_docs');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return initialDocs;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('integrix_uploaded_docs', JSON.stringify(docs));
+    } catch {}
+  }, [docs]);
+
   const [uploadToast, setUploadToast] = useState<string | null>(null);
 
-  // 4. Extracted Facts State
+  // Extracted Facts State
   const extractedFacts: ExtractedFact[] = [
     {
       id: 'fact-1',
@@ -354,7 +400,7 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
     },
   ];
 
-  // 5. Policy Drafts & Approval State
+  // Policy Drafts State
   const initialDrafts: PolicyDraft[] = [
     {
       id: 'draft-1',
@@ -417,12 +463,26 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
       status: 'APPROVED',
     },
   ];
-  const [policyDrafts, setPolicyDrafts] = useState<PolicyDraft[]>(initialDrafts);
+
+  const [policyDrafts, setPolicyDrafts] = useState<PolicyDraft[]>(() => {
+    try {
+      const saved = localStorage.getItem('integrix_policy_drafts');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return initialDrafts;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('integrix_policy_drafts', JSON.stringify(policyDrafts));
+    } catch {}
+  }, [policyDrafts]);
+
   const [rejectingDraftId, setRejectingDraftId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState<string>('');
 
-  // 6. Admin Decision State
-  const [adminDecisions, setAdminDecisions] = useState<Record<string, AdminDecision>>({
+  // Admin Decisions State
+  const defaultDecisions: Record<string, AdminDecision> = {
     'AD-NW-001': {
       adId: 'AD-NW-001',
       action: 'APPROVE',
@@ -438,29 +498,112 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
       comments: 'Critical pricing mismatch. Advertised ₹799 is ₹200 below catalogue floor price of ₹999.',
       rejectionReason: 'Pricing violation: Below authorised campaign floor price.',
     },
+  };
+
+  const [adminDecisions, setAdminDecisions] = useState<Record<string, AdminDecision>>(() => {
+    try {
+      const saved = localStorage.getItem('integrix_admin_decisions');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return defaultDecisions;
   });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('integrix_admin_decisions', JSON.stringify(adminDecisions));
+    } catch {}
+  }, [adminDecisions]);
 
   const [activeDecisionAd, setActiveDecisionAd] = useState<string>('AD-NW-002');
   const [decisionAction, setDecisionAction] = useState<AdminDecision['action']>('REJECT');
-  const [decisionComments, setDecisionComments] = useState<string>('Pricing violation detected: Advertised price of ₹799 violates minimum floor price rule NW-R-002.');
-  const [decisionRejectionReason, setDecisionRejectionReason] = useState<string>('Pricing violation: Below authorised campaign floor price.');
+  const [decisionComments, setDecisionComments] = useState<string>(
+    'Pricing violation detected: Advertised price of ₹799 violates minimum floor price rule NW-R-002.'
+  );
+  const [decisionRejectionReason, setDecisionRejectionReason] = useState<string>(
+    'Pricing violation: Below authorised campaign floor price.'
+  );
   const [decisionExceptionExpiry, setDecisionExceptionExpiry] = useState<string>('2026-12-31');
 
-  // Flattened 10 Stages Definition
-  const stages: { id: LifecycleStage; number: number; label: string; short: string }[] = [
-    { id: 'org', number: 1, label: 'Organisation Onboarding', short: 'Org Setup' },
-    { id: 'sector', number: 2, label: 'Sector Selection', short: 'Sector' },
-    { id: 'docs', number: 3, label: 'Document Upload', short: 'Documents' },
-    { id: 'extraction', number: 4, label: 'AI Document Extraction', short: 'Extraction' },
-    { id: 'review', number: 5, label: 'Policy Review & Drafts', short: 'Drafts' },
-    { id: 'approval', number: 6, label: 'Administrator Approval', short: 'Approval' },
-    { id: 'repository', number: 7, label: 'Versioned Rulebook Repository', short: 'Repository' },
-    { id: 'audit', number: 8, label: 'Creative Audit Studio', short: 'Audit' },
-    { id: 'report', number: 9, label: 'Violation Report', short: 'Report' },
-    { id: 'decision', number: 10, label: 'Final Decision & Action', short: 'Decision' },
+  // ─────────────────────────────────────────────────────────────
+  // 2. LIFECYCLE REGISTRY: 4 PHASES & 10 STAGES
+  // ─────────────────────────────────────────────────────────────
+
+  const stages: {
+    id: LifecycleStage;
+    number: number;
+    label: string;
+    short: string;
+    phaseId: string;
+    phaseNumber: string;
+    phaseTitle: string;
+  }[] = [
+    { id: 'org', number: 1, label: 'Organisation Onboarding', short: 'Org Setup', phaseId: 'phase-1', phaseNumber: 'PHASE 01', phaseTitle: 'ORGANISATION SETUP' },
+    { id: 'sector', number: 2, label: 'Sector Selection', short: 'Sector', phaseId: 'phase-1', phaseNumber: 'PHASE 01', phaseTitle: 'ORGANISATION SETUP' },
+    { id: 'docs', number: 3, label: 'Document Upload', short: 'Documents', phaseId: 'phase-1', phaseNumber: 'PHASE 01', phaseTitle: 'ORGANISATION SETUP' },
+    { id: 'extraction', number: 4, label: 'AI Document Extraction', short: 'AI Extraction', phaseId: 'phase-2', phaseNumber: 'PHASE 02', phaseTitle: 'POLICY GOVERNANCE' },
+    { id: 'review', number: 5, label: 'Policy Draft & Review', short: 'Policy Review', phaseId: 'phase-2', phaseNumber: 'PHASE 02', phaseTitle: 'POLICY GOVERNANCE' },
+    { id: 'approval', number: 6, label: 'Administrator Approval', short: 'Admin Approval', phaseId: 'phase-2', phaseNumber: 'PHASE 02', phaseTitle: 'POLICY GOVERNANCE' },
+    { id: 'repository', number: 7, label: 'Versioned Policy Repository', short: 'Policy Repository', phaseId: 'phase-2', phaseNumber: 'PHASE 02', phaseTitle: 'POLICY GOVERNANCE' },
+    { id: 'audit', number: 8, label: 'Creative Audit Studio', short: 'Audit Studio', phaseId: 'phase-3', phaseNumber: 'PHASE 03', phaseTitle: 'CONTENT VERIFICATION' },
+    { id: 'report', number: 9, label: 'Violation Report', short: 'Violation Report', phaseId: 'phase-3', phaseNumber: 'PHASE 03', phaseTitle: 'CONTENT VERIFICATION' },
+    { id: 'decision', number: 10, label: 'Administrator Decision', short: 'Final Decision', phaseId: 'phase-4', phaseNumber: 'PHASE 04', phaseTitle: 'FINAL DECISION' },
   ];
 
   const currentStageIndex = stages.findIndex((s) => s.id === currentStage);
+  const safeCurrentStageIndex = currentStageIndex >= 0 ? currentStageIndex : 0;
+  const currentStageObj = stages[safeCurrentStageIndex];
+
+  // Helper to determine if a stage is actually completed based on application state
+  const isStageComplete = (stageId: LifecycleStage): boolean => {
+    switch (stageId) {
+      case 'org':
+        return Boolean(org.name && org.industry && org.location);
+      case 'sector':
+        return selectedSector === 'retail';
+      case 'docs':
+        return docs.length > 0 && docs.every((d) => d.uploaded);
+      case 'extraction':
+        return extractedFacts.length >= 6;
+      case 'review':
+        return policyDrafts.length > 0;
+      case 'approval':
+        return (
+          policyDrafts.length > 0 &&
+          policyDrafts.every((d) => d.status === 'APPROVED' || d.status === 'REJECTED') &&
+          policyDrafts.some((d) => d.status === 'APPROVED')
+        );
+      case 'repository':
+        return policyDrafts.some((d) => d.status === 'APPROVED');
+      case 'audit':
+        return safeCurrentStageIndex >= 7;
+      case 'report':
+        return safeCurrentStageIndex >= 8;
+      case 'decision':
+        return Object.keys(adminDecisions).length > 0;
+      default:
+        return false;
+    }
+  };
+
+  const getStageStatus = (stageId: LifecycleStage): StageStatus => {
+    if (stageId === currentStage) {
+      return 'CURRENT';
+    }
+    if (stageId === 'approval') {
+      const hasPending = policyDrafts.some((d) => d.status === 'PENDING_REVIEW');
+      if (hasPending && safeCurrentStageIndex > 5) {
+        return 'NEEDS_ATTENTION';
+      }
+    }
+    if (isStageComplete(stageId)) {
+      return 'COMPLETED';
+    }
+    const idx = stages.findIndex((s) => s.id === stageId);
+    if (idx < safeCurrentStageIndex) {
+      return 'NEEDS_ATTENTION';
+    }
+    return 'UPCOMING';
+  };
 
   // 4 Grouped Lifecycle Phases
   const phases = [
@@ -468,11 +611,12 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
       id: 'phase-1',
       number: 'PHASE 01',
       title: 'ORGANISATION SETUP',
+      firstStage: 'org' as LifecycleStage,
       description: 'Configure corporate identity, active industry sector boundaries, and ingest compliance source documents.',
       stages: [
-        { id: 'org' as LifecycleStage, number: 1, name: 'Organisation Onboarding', short: 'Org Setup', desc: 'Configure brand profile, commercial scope and multi-tenant parameters.' },
-        { id: 'sector' as LifecycleStage, number: 2, name: 'Sector Selection', short: 'Sector', desc: 'Select regulated sector guardrails, apparel/retail advertising standards.' },
-        { id: 'docs' as LifecycleStage, number: 3, name: 'Document Upload', short: 'Documents', desc: 'Ingest brand guidelines, policy PDFs, and product catalogue workbooks.' },
+        { id: 'org' as LifecycleStage, number: 1, name: 'Organisation Onboarding', short: 'Org Setup', desc: 'Configure brand profile, commercial scope and parameters.' },
+        { id: 'sector' as LifecycleStage, number: 2, name: 'Sector Selection', short: 'Sector', desc: 'Select regulated sector guardrails (Retail & Fashion active).' },
+        { id: 'docs' as LifecycleStage, number: 3, name: 'Document Upload', short: 'Documents', desc: 'Ingest brand guidelines, policies, and product catalogue master.' },
       ],
       guidance: 'Begin by configuring your organisation and providing its source documents.',
     },
@@ -480,23 +624,25 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
       id: 'phase-2',
       number: 'PHASE 02',
       title: 'POLICY GOVERNANCE',
+      firstStage: 'extraction' as LifecycleStage,
       description: 'Synthesise deterministic rules from documents, review policy drafts, approve rulebooks and publish repositories.',
       stages: [
-        { id: 'extraction' as LifecycleStage, number: 4, name: 'AI Document Extraction', short: 'Extraction', desc: 'Extract operational facts, claims restrictions, and policy clauses from documents.' },
-        { id: 'review' as LifecycleStage, number: 5, name: 'Policy Review & Drafts', short: 'Drafts', desc: 'Examine synthesised rule conditions, severity levels, and source citations.' },
-        { id: 'approval' as LifecycleStage, number: 6, name: 'Administrator Approval', short: 'Approval', desc: 'Sign off and activate rules to govern live commercial advertising.' },
-        { id: 'repository' as LifecycleStage, number: 7, name: 'Versioned Rulebook Repository', short: 'Repository', desc: 'Audit published active rules, version history, and rulebook records.' },
+        { id: 'extraction' as LifecycleStage, number: 4, name: 'AI Document Extraction', short: 'Extraction', desc: 'Extract operational facts and policy clauses from documents.' },
+        { id: 'review' as LifecycleStage, number: 5, name: 'Policy Draft & Review', short: 'Draft Review', desc: 'Examine synthesised rule conditions, severity levels, and citations.' },
+        { id: 'approval' as LifecycleStage, number: 6, name: 'Administrator Approval', short: 'Sign-off', desc: 'Authorize and activate rules to govern live commercial advertising.' },
+        { id: 'repository' as LifecycleStage, number: 7, name: 'Versioned Policy Repository', short: 'Repository', desc: 'Audit published active rules, versions, and executable rulebook.' },
       ],
-      guidance: "Review extracted policies, approve applicable rules and establish your organisation's repository.",
+      guidance: 'Review extracted policies, approve applicable rules and establish your versioned repository.',
     },
     {
       id: 'phase-3',
       number: 'PHASE 03',
       title: 'CONTENT VERIFICATION',
+      firstStage: 'audit' as LifecycleStage,
       description: 'Audit creative posters and marketing claims against catalogue facts and active policies in real time.',
       stages: [
-        { id: 'audit' as LifecycleStage, number: 8, name: 'Creative Audit Studio', short: 'Audit Studio', desc: 'Run multi-modal OCR extraction and automated policy compliance evaluation.' },
-        { id: 'report' as LifecycleStage, number: 9, name: 'Violation Report', short: 'Violation Report', desc: 'Inspect breach severity, verbatim evidence excerpts, and Do-This-Instead remedies.' },
+        { id: 'audit' as LifecycleStage, number: 8, name: 'Creative Audit Studio', short: 'Audit Studio', desc: 'Run multi-modal OCR extraction and automated policy evaluation.' },
+        { id: 'report' as LifecycleStage, number: 9, name: 'Violation Report', short: 'Violation Report', desc: 'Inspect breach severity, verbatim evidence excerpts, and remediation.' },
       ],
       guidance: 'Submit creative content for verification against your approved policies.',
     },
@@ -504,64 +650,69 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
       id: 'phase-4',
       number: 'PHASE 04',
       title: 'FINAL DECISION',
+      firstStage: 'decision' as LifecycleStage,
       description: 'Record authoritative administrator decisions, publish sign-offs, or issue structured rejection notifications.',
       stages: [
         { id: 'decision' as LifecycleStage, number: 10, name: 'Administrator Decision', short: 'Decision', desc: 'Sign off, reject, or request revisions with immutable audit log entries.' },
       ],
-      guidance: "Review findings and record the administrator's final decision.",
+      guidance: 'Review audit findings and record the administrator final decision.',
     },
   ];
 
-  // Helper to determine phase status and progress
-  const getPhaseInfo = (phaseIndex: number) => {
-    // Current stage maps to a phase
-    // Phase 0: stages 0..2 (org, sector, docs)
-    // Phase 1: stages 3..6 (extraction, review, approval, repository)
-    // Phase 2: stages 7..8 (audit, report)
-    // Phase 3: stage 9 (decision)
-    const phaseRanges = [
-      { start: 0, end: 2 },
-      { start: 3, end: 6 },
-      { start: 7, end: 8 },
-      { start: 9, end: 9 },
-    ];
-    const range = phaseRanges[phaseIndex];
-    const isPastPhase = currentStageIndex > range.end;
-    const isCurrentPhase = currentStageIndex >= range.start && currentStageIndex <= range.end;
+  // Active Phase calculation
+  const activePhaseIndex = phases.findIndex((p) => p.stages.some((s) => s.id === currentStage));
+  const safeActivePhaseIndex = activePhaseIndex >= 0 ? activePhaseIndex : 0;
+  const activePhase = phases[safeActivePhaseIndex];
 
-    if (isPastPhase) {
-      return {
-        status: 'COMPLETED' as const,
-        completedCount: range.end - range.start + 1,
-        totalCount: range.end - range.start + 1,
-        progressPct: 100,
-      };
-    } else if (isCurrentPhase) {
-      const completedInPhase = currentStageIndex - range.start;
-      const totalInPhase = range.end - range.start + 1;
-      return {
-        status: 'IN_PROGRESS' as const,
-        completedCount: completedInPhase,
-        totalCount: totalInPhase,
-        progressPct: Math.round((completedInPhase / totalInPhase) * 100),
-      };
-    } else {
-      return {
-        status: 'UPCOMING' as const,
-        completedCount: 0,
-        totalCount: range.end - range.start + 1,
-        progressPct: 0,
-      };
+  // Phase metrics helper
+  const getPhaseMetrics = (phaseIndex: number) => {
+    const phase = phases[phaseIndex];
+    const completedStages = phase.stages.filter((s) => isStageComplete(s.id)).length;
+    const totalStages = phase.stages.length;
+    const isCompleted = completedStages === totalStages;
+    const isActive = safeActivePhaseIndex === phaseIndex;
+    const progressPct = Math.round((completedStages / totalStages) * 100);
+
+    let statusText: 'COMPLETED' | 'IN PROGRESS' | 'UPCOMING' = 'UPCOMING';
+    if (isCompleted) {
+      statusText = 'COMPLETED';
+    } else if (isActive || completedStages > 0) {
+      statusText = 'IN PROGRESS';
     }
+
+    return {
+      completedStages,
+      totalStages,
+      isCompleted,
+      isActive,
+      progressPct,
+      statusText,
+    };
   };
 
-  const activePhaseIndex = phases.findIndex((p) => p.stages.some((s) => s.id === currentStage));
-  const activePhase = phases[activePhaseIndex >= 0 ? activePhaseIndex : 0];
+  // Overall lifecycle progress
+  const totalCompletedStages = stages.filter((s) => isStageComplete(s.id)).length;
+  const totalStagesCount = stages.length;
+  const overallProgressPct = Math.round((totalCompletedStages / totalStagesCount) * 100);
+
+  // ─────────────────────────────────────────────────────────────
+  // 3. ACTION HANDLERS
+  // ─────────────────────────────────────────────────────────────
 
   const handleApproveDraft = (id: string) => {
     setPolicyDrafts((prev) =>
       prev.map((d) => (d.id === id ? { ...d, status: 'APPROVED', rejectionReason: undefined } : d))
     );
+    setUploadToast('Policy rule approved and marked ACTIVE for rulebook execution.');
+    setTimeout(() => setUploadToast(null), 3000);
+  };
+
+  const handleApproveAllDrafts = () => {
+    setPolicyDrafts((prev) =>
+      prev.map((d) => ({ ...d, status: 'APPROVED', rejectionReason: undefined }))
+    );
+    setUploadToast('All 5 synthesized policy rules approved and certified for repository publishing.');
+    setTimeout(() => setUploadToast(null), 3500);
   };
 
   const handleRejectDraft = (id: string) => {
@@ -571,6 +722,8 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
     );
     setRejectingDraftId(null);
     setRejectReason('');
+    setUploadToast('Draft policy rejected. Rationale logged in audit trail.');
+    setTimeout(() => setUploadToast(null), 3000);
   };
 
   const handleSaveDecision = () => {
@@ -588,151 +741,220 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
     setTimeout(() => setUploadToast(null), 3000);
   };
 
+  // Canonical NOVAWEAR Creatives for Stage 8 preview
+  const canonicalPosters = [
+    { id: 'AD-NW-001', title: 'Classic Cotton Shirt', sku: 'NW-CS-001', price: '₹999', outcome: 'PASS', issue: 'None (Approved Campaign)' },
+    { id: 'AD-NW-002', title: 'Classic Cotton Shirt', sku: 'NW-CS-001', price: '₹799', outcome: 'FAIL', issue: 'Price below campaign floor (₹999)' },
+    { id: 'AD-NW-003', title: 'Festive Kurta', sku: 'NW-CK-002', price: '₹1,299', outcome: 'FAIL', issue: 'Fabric blend misrepresented as 100% Cotton' },
+    { id: 'AD-NW-004', title: 'Essential Polo Tee', sku: 'NW-EP-003', price: '₹899', outcome: 'PASS', issue: 'None (Approved Campaign)' },
+    { id: 'AD-NW-005', title: 'Wrinkle-Proof Shirt', sku: 'NW-WP-004', price: '₹899', outcome: 'FAIL', issue: 'Unapproved campaign promotional price' },
+    { id: 'AD-NW-006', title: 'Express Delivery Polo', sku: 'NW-EP-003', price: '₹999', outcome: 'FAIL', issue: 'Unqualified express delivery outside Chennai' },
+    { id: 'AD-NW-007', title: 'Summer T-Shirt', sku: 'NW-ST-005', price: '₹599', outcome: 'FAIL', issue: 'Unapproved delivery guarantee claim' },
+  ];
+
   return (
     <div className="w-full mb-12 space-y-6">
-      {/* ──── 4-PHASE LIFECYCLE OVERVIEW CARDS (2x2 Grid) ──── */}
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* ─────────────────────────────────────────────────────────────
+          SECTION 0: HEADER & COMPACT PROGRESS SUMMARY
+          ───────────────────────────────────────────────────────────── */}
+      <div className="bg-white border border-slate-200/90 rounded-2xl shadow-xs p-5 sm:p-6 space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-black uppercase tracking-wider text-indigo-600 bg-indigo-50 border border-indigo-200/60 px-2.5 py-0.5 rounded-md">
+              <span className="text-[11px] font-black uppercase tracking-wider text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-md">
                 Brand Governance Lifecycle
               </span>
-              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                NOVAWEAR Live
+              <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                NOVAWEAR Live Working Model
               </span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mt-1">
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mt-1.5">
               End-to-End Governance Architecture
             </h2>
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">
+              Interactive 4-phase governance workflow. Click any phase card or stage to navigate directly without scrolling.
+            </p>
           </div>
-          <div className="flex items-center gap-2 text-xs">
-            <button
-              onClick={() => onStageChange(stages[Math.max(0, currentStageIndex - 1)].id)}
-              disabled={currentStageIndex === 0}
-              className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-bold text-slate-700 shadow-2xs transition-colors cursor-pointer"
-            >
-              <ArrowLeft className="w-3.5 h-3.5 mr-1 inline" /> Previous Stage
-            </button>
-            <button
-              onClick={() => onStageChange(stages[Math.min(stages.length - 1, currentStageIndex + 1)].id)}
-              disabled={currentStageIndex === stages.length - 1}
-              className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-40 disabled:cursor-not-allowed font-bold shadow-sm transition-colors cursor-pointer flex items-center gap-1"
-            >
-              Next Stage <ArrowRight className="w-3.5 h-3.5 ml-1 inline" />
-            </button>
+
+          {/* Compact Overall Completion Pill */}
+          <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 sm:px-4 sm:py-3 flex flex-col gap-1.5 min-w-[240px]">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-bold text-slate-700">Overall Lifecycle Progress</span>
+              <span className="mono font-black text-indigo-700">{overallProgressPct}%</span>
+            </div>
+            <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-indigo-600 to-emerald-500 transition-all duration-300"
+                style={{ width: `${overallProgressPct}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between text-[11px] text-slate-500">
+              <span>{totalCompletedStages} of {totalStagesCount} Stages Completed</span>
+              <span className="font-semibold text-slate-700">{activePhase.number} Active</span>
+            </div>
           </div>
         </div>
 
-        {/* 2x2 Grid on desktop, 1-col on mobile */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Phase Breakdown Summary Strip */}
+        <div className="pt-3 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+          {phases.map((p, idx) => {
+            const m = getPhaseMetrics(idx);
+            const isCurrent = safeActivePhaseIndex === idx;
+            return (
+              <div
+                key={p.id}
+                onClick={() => onStageChange(p.firstStage)}
+                className={`px-3 py-2 rounded-xl border text-left cursor-pointer transition-all ${
+                  isCurrent
+                    ? 'bg-indigo-50/70 border-indigo-300 ring-1 ring-indigo-200 text-indigo-950 font-semibold'
+                    : m.isCompleted
+                    ? 'bg-emerald-50/50 border-emerald-200/80 hover:bg-emerald-50 text-emerald-950'
+                    : 'bg-slate-50/80 border-slate-200 hover:bg-slate-100/70 text-slate-700'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="mono text-[10px] font-bold text-slate-500 uppercase">{p.number}</span>
+                  {m.isCompleted ? (
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-600 stroke-[2.5]" />
+                  ) : isCurrent ? (
+                    <CircleDot className="w-3.5 h-3.5 text-indigo-600" />
+                  ) : (
+                    <span className="text-[10px] text-slate-400">{m.completedStages}/{m.totalStages}</span>
+                  )}
+                </div>
+                <div className="text-xs font-bold truncate mt-0.5">{p.title}</div>
+                <div className="text-[11px] text-slate-500 mt-0.5">
+                  {p.stages.length} stages • {m.completedStages}/{m.totalStages} done
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ─────────────────────────────────────────────────────────────
+          SECTION 1 & 2: FOUR PERSISTENT PHASE CARDS (Always Visible)
+          ───────────────────────────────────────────────────────────── */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between text-xs text-slate-500 px-1">
+          <span className="font-bold text-slate-700 uppercase tracking-wider text-[11px]">
+            Governance Lifecycle Phases (Click to Navigate)
+          </span>
+          <span>Click any phase to open its initial stage</span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
           {phases.map((phase, pIdx) => {
-            const info = getPhaseInfo(pIdx);
-            const isPhaseActive = activePhaseIndex === pIdx;
-            const isCompleted = info.status === 'COMPLETED';
-            const isInProgress = info.status === 'IN_PROGRESS';
+            const m = getPhaseMetrics(pIdx);
+            const isPhaseActive = safeActivePhaseIndex === pIdx;
 
             return (
               <div
                 key={phase.id}
                 onClick={() => {
-                  // If the first stage of this phase has a mapped app screen, navigate there directly
-                  const firstMappedPage = phase.stages
-                    .map((s) => STAGE_PAGE_MAP[s.id])
-                    .find(Boolean);
-                  if (firstMappedPage && onNavigateTo) {
-                    onNavigateTo(firstMappedPage);
-                  } else {
-                    // Otherwise switch to the first stage within the lifecycle view
-                    if (!isPhaseActive) {
-                      onStageChange(phase.stages[0].id);
-                    }
-                  }
+                  onStageChange(phase.firstStage);
                 }}
-                className={`creative-card p-5 sm:p-6 flex flex-col justify-between transition-all cursor-pointer relative overflow-hidden group ${
+                className={`creative-card p-4 sm:p-5 flex flex-col justify-between transition-all cursor-pointer relative overflow-hidden group select-none ${
                   isPhaseActive
-                    ? 'border-indigo-500 ring-2 ring-indigo-500/20 shadow-md bg-white'
-                    : isCompleted
-                    ? 'border-emerald-200 hover:border-emerald-400 bg-white/90'
+                    ? 'border-indigo-600 ring-2 ring-indigo-500/25 shadow-md bg-white'
+                    : m.isCompleted
+                    ? 'border-emerald-300 hover:border-emerald-400 bg-white shadow-2xs'
                     : 'border-slate-200 hover:border-slate-300 bg-white'
                 }`}
               >
-                {/* Visual accent top highlight */}
+                {/* Top Accent Gradient Line */}
                 <div
-                  className={`absolute top-0 left-0 right-0 h-1 ${
+                  className={`absolute top-0 left-0 right-0 h-1.5 transition-all ${
                     isPhaseActive
-                      ? 'bg-gradient-to-r from-indigo-600 to-violet-600'
-                      : isCompleted
+                      ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600'
+                      : m.isCompleted
                       ? 'bg-emerald-500'
-                      : 'bg-slate-200'
+                      : 'bg-slate-200 group-hover:bg-slate-300'
                   }`}
                 />
 
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="mono text-[11px] font-black tracking-wider text-slate-400">
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between gap-1.5">
+                    <span
+                      className={`mono text-[10px] font-black tracking-wider px-2 py-0.5 rounded ${
+                        isPhaseActive
+                          ? 'bg-indigo-100 text-indigo-700 font-extrabold'
+                          : 'bg-slate-100 text-slate-500'
+                      }`}
+                    >
                       {phase.number}
                     </span>
 
                     {/* Status Badge */}
-                    {isCompleted ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    {m.isCompleted ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-300">
                         <CheckCircle className="w-3 h-3 stroke-[2.5]" />
                         COMPLETED
                       </span>
-                    ) : isInProgress ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200 animate-pulse">
-                        <CircleDot className="w-3 h-3 text-indigo-600" />
+                    ) : isPhaseActive ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        <CircleDot className="w-3 h-3 text-indigo-600 animate-pulse" />
                         IN PROGRESS
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-500">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500">
                         UPCOMING
                       </span>
                     )}
                   </div>
 
                   <div>
-                    <h3 className="text-base sm:text-lg font-black text-slate-900 group-hover:text-indigo-600 transition-colors">
+                    <h3
+                      className={`text-sm sm:text-base font-black transition-colors ${
+                        isPhaseActive
+                          ? 'text-indigo-700'
+                          : 'text-slate-900 group-hover:text-indigo-600'
+                      }`}
+                    >
                       {phase.title}
                     </h3>
-                    <p className="text-xs text-slate-500 mt-1 leading-relaxed line-clamp-2">
+                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed line-clamp-2">
                       {phase.description}
                     </p>
                   </div>
                 </div>
 
-                <div className="pt-4 mt-4 border-t border-slate-100 space-y-2.5">
-                  <div className="flex items-center justify-between text-xs">
+                <div className="pt-3.5 mt-3 border-t border-slate-100 space-y-2">
+                  <div className="flex items-center justify-between text-[11px]">
                     <span className="text-slate-500 font-medium">
-                      {phase.stages.length} Stages · {info.completedCount}/{info.totalCount} Done
+                      {phase.stages.length} Stages • {m.completedStages}/{m.totalStages} Done
                     </span>
-                    <span className="mono text-[11px] font-black text-slate-700">
-                      {info.progressPct}%
-                    </span>
+                    <span className="mono font-bold text-slate-700">{m.progressPct}%</span>
                   </div>
 
                   {/* Progress bar */}
                   <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all duration-300 ${
-                        isCompleted
+                        m.isCompleted
                           ? 'bg-emerald-500'
-                          : isInProgress
-                          ? 'bg-gradient-to-r from-indigo-600 to-violet-600'
+                          : isPhaseActive
+                          ? 'bg-gradient-to-r from-indigo-600 to-purple-600'
                           : 'bg-slate-300'
                       }`}
-                      style={{ width: `${info.progressPct}%` }}
+                      style={{ width: `${m.progressPct}%` }}
                     />
                   </div>
 
-                  <div className="flex items-center justify-between pt-1">
-                    <span className="text-[11px] font-bold text-indigo-600 flex items-center gap-1">
-                      {isPhaseActive ? 'Currently Active Phase' : 'Open Phase →'}
-                    </span>
+                  <div className="flex items-center justify-between pt-0.5 text-[11px] font-bold">
+                    {isPhaseActive ? (
+                      <span className="text-indigo-700 flex items-center gap-1">
+                        ● Currently Active
+                      </span>
+                    ) : (
+                      <span className="text-slate-500 group-hover:text-indigo-600 flex items-center gap-0.5 transition-colors">
+                        Open Phase →
+                      </span>
+                    )}
                     <ChevronRight
-                      className={`w-4 h-4 text-slate-400 group-hover:translate-x-1 transition-transform ${
-                        isPhaseActive ? 'text-indigo-600' : ''
+                      className={`w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 ${
+                        isPhaseActive ? 'text-indigo-600' : 'text-slate-400'
                       }`}
                     />
                   </div>
@@ -743,109 +965,118 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
         </div>
       </div>
 
-      {/* ──── ACTIVE PHASE DETAIL & VERTICAL STAGE LIST ──── */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm p-5 sm:p-6 space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-4 border-b border-slate-100">
+      {/* ─────────────────────────────────────────────────────────────
+          SECTION 3: PERSISTENT STAGE PROGRESS TRACKER (Active Phase Stages)
+          ───────────────────────────────────────────────────────────── */}
+      <div className="bg-white border border-slate-200/90 rounded-2xl shadow-xs p-4 sm:p-5 space-y-3.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
           <div>
             <div className="flex items-center gap-2">
-              <span className="mono text-[11px] font-black uppercase text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-md">
+              <span className="mono text-[10px] font-black uppercase text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
                 {activePhase.number}
               </span>
-              <h3 className="text-lg font-black text-slate-900 tracking-tight">
-                {activePhase.title}
+              <h3 className="text-sm sm:text-base font-black text-slate-900 tracking-tight">
+                {activePhase.title} — Stage Workflow
               </h3>
             </div>
-            {/* Guided Experience Callout */}
-            <p className="text-xs sm:text-sm text-slate-600 mt-1.5 font-medium flex items-center gap-1.5">
-              <Info className="w-4 h-4 text-indigo-600 shrink-0" />
+            <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
+              <Info className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
               <span>{activePhase.guidance}</span>
             </p>
           </div>
 
-          <div className="text-right shrink-0">
-            <span className="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">
-              Selected Stage
+          <div className="text-left sm:text-right shrink-0">
+            <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">
+              Currently Active
             </span>
-            <span className="text-xs font-black text-slate-800 mono">
-              Stage {currentStageIndex + 1} of 10 ({stages[currentStageIndex].short})
+            <span className="text-xs font-black text-indigo-700 mono">
+              Stage {currentStageObj.number} of 10 ({currentStageObj.short})
             </span>
           </div>
         </div>
 
-        {/* Compact Vertical Timeline / Structured Stage List */}
-        <div className="space-y-2.5">
-          {activePhase.stages.map((st) => {
-            const overallIdx = stages.findIndex((s) => s.id === st.id);
-            const isStageCurrent = st.id === currentStage;
-            const isStageDone = overallIdx < currentStageIndex;
+        {/* Horizontal responsive step progress bar for active phase stages */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
+          {activePhase.stages.map((st, sIdx) => {
+            const stStatus = getStageStatus(st.id);
+            const isSelected = st.id === currentStage;
 
             return (
-              <div
+              <button
                 key={st.id}
+                type="button"
                 onClick={() => onStageChange(st.id)}
-                className={`p-3.5 sm:p-4 rounded-xl border transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                  isStageCurrent
-                    ? 'bg-indigo-50/70 border-indigo-300 ring-1 ring-indigo-200 shadow-2xs'
-                    : isStageDone
-                    ? 'bg-slate-50/60 border-slate-200 hover:bg-slate-100/70'
-                    : 'bg-white border-slate-200/70 hover:border-slate-300'
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+                  isSelected
+                    ? 'bg-indigo-50/90 border-indigo-400 ring-2 ring-indigo-400/25 shadow-2xs'
+                    : stStatus === 'COMPLETED'
+                    ? 'bg-emerald-50/40 border-emerald-200 hover:bg-emerald-50/80 hover:border-emerald-300'
+                    : stStatus === 'NEEDS_ATTENTION'
+                    ? 'bg-amber-50/50 border-amber-300 hover:bg-amber-50'
+                    : 'bg-slate-50/70 border-slate-200/90 hover:bg-white hover:border-slate-300'
                 }`}
               >
-                <div className="flex items-start sm:items-center gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  {/* Status Indicator Icon */}
                   <div
                     className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0 transition-colors ${
-                      isStageCurrent
+                      isSelected
                         ? 'bg-indigo-600 text-white shadow-xs'
-                        : isStageDone
-                        ? 'bg-emerald-500 text-white'
-                        : 'bg-slate-100 text-slate-500 border border-slate-200'
+                        : stStatus === 'COMPLETED'
+                        ? 'bg-emerald-600 text-white'
+                        : stStatus === 'NEEDS_ATTENTION'
+                        ? 'bg-amber-500 text-white'
+                        : 'bg-white text-slate-500 border border-slate-200'
                     }`}
                   >
-                    {isStageDone ? <Check className="w-4 h-4 stroke-[3]" /> : st.number}
+                    {stStatus === 'COMPLETED' ? (
+                      <Check className="w-4 h-4 stroke-[3]" />
+                    ) : stStatus === 'NEEDS_ATTENTION' ? (
+                      <AlertCircle className="w-4 h-4 stroke-[2.5]" />
+                    ) : (
+                      st.number
+                    )}
                   </div>
 
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-slate-900">{st.name}</span>
-                      {isStageCurrent && (
-                        <span className="text-[10px] font-extrabold uppercase bg-indigo-600 text-white px-2 py-0.2 rounded-md">
-                          Active
-                        </span>
-                      )}
-                      {isStageDone && (
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded-md">
-                          Verified
-                        </span>
-                      )}
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-slate-900 truncate">{st.name}</span>
                     </div>
-                    <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
-                      {st.desc}
-                    </p>
+                    <div className="text-[10px] text-slate-500 truncate">{st.desc}</div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onStageChange(st.id);
-                    }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      isStageCurrent
-                        ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-2xs'
-                        : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    {isStageCurrent ? 'Current View' : isStageDone ? 'Review Stage' : 'Go to Stage →'}
-                  </button>
+                {/* Status Pill Indicator */}
+                <div className="shrink-0">
+                  {isSelected ? (
+                    <span className="text-[9px] font-black uppercase tracking-wider bg-indigo-600 text-white px-2 py-0.5 rounded-full">
+                      CURRENT
+                    </span>
+                  ) : stStatus === 'COMPLETED' ? (
+                    <span className="text-[9px] font-extrabold uppercase tracking-wider bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                      <Check className="w-2.5 h-2.5" /> DONE
+                    </span>
+                  ) : stStatus === 'NEEDS_ATTENTION' ? (
+                    <span className="text-[9px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full">
+                      ATTN
+                    </span>
+                  ) : (
+                    <span className="text-[9px] font-semibold uppercase tracking-wider bg-slate-200/70 text-slate-600 px-1.5 py-0.5 rounded-full">
+                      NEXT
+                    </span>
+                  )}
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
       </div>
 
-      {/* ──── TOAST NOTIFICATION ──── */}
+      {/* ─────────────────────────────────────────────────────────────
+          SECTION 4: MAIN STAGE WORKSPACE (Renders ONLY Current Stage)
+          ───────────────────────────────────────────────────────────── */}
+
+      {/* Toast Notification */}
       {uploadToast && (
         <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 text-sm animate-fade-in border border-slate-700">
           <CheckCircle2 className="w-5 h-5 text-emerald-400" />
@@ -853,14 +1084,14 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
         </div>
       )}
 
-      {/* ──── STAGE 1: ORGANISATION ONBOARDING ──── */}
+      {/* ── STAGE 1: ORGANISATION ONBOARDING ── */}
       {currentStage === 'org' && (
         <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm p-6 sm:p-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
-                  Stage 1 of 10
+                <span className="text-xs font-bold uppercase tracking-wider text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
+                  STAGE 01 OF 10 • PHASE 01: ORGANISATION SETUP
                 </span>
                 <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
                   <ShieldCheck className="w-3.5 h-3.5" /> Sample Organisation Preloaded
@@ -879,7 +1110,7 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
                 setUploadToast('Reset to NOVAWEAR default sample profile');
                 setTimeout(() => setUploadToast(null), 2500);
               }}
-              className="text-xs font-medium text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 flex items-center gap-1.5 self-start"
+              className="text-xs font-medium text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 flex items-center gap-1.5 self-start cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" /> Reset to NOVAWEAR Defaults
             </button>
@@ -959,14 +1190,15 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
             </div>
           </div>
 
-          <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
+          {/* Navigation Footer */}
+          <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="text-xs text-slate-500 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-              Organisation profile loaded. Proceed to verify business sector alignment.
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              Organisation profile configured. Proceed to verify business sector alignment.
             </div>
             <button
               onClick={() => onStageChange('sector')}
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm transition flex items-center gap-2"
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm transition flex items-center gap-2 cursor-pointer"
             >
               Next: Select Business Sector <ArrowRight className="w-4 h-4" />
             </button>
@@ -974,12 +1206,12 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
         </div>
       )}
 
-      {/* ──── STAGE 2: SECTOR SELECTION ──── */}
+      {/* ── STAGE 2: SECTOR SELECTION ── */}
       {currentStage === 'sector' && (
         <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm p-6 sm:p-8">
           <div className="pb-6 border-b border-slate-100">
-            <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
-              Stage 2 of 10
+            <span className="text-xs font-bold uppercase tracking-wider text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
+              STAGE 02 OF 10 • PHASE 01: ORGANISATION SETUP
             </span>
             <h3 className="text-xl font-bold text-slate-900 tracking-tight mt-1">
               Select Business Sector & Industry Compliance Model
@@ -1013,9 +1245,13 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
                   }`}
                 >
                   <div className="flex items-center justify-between mb-3">
-                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105 ${
-                      isActive ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-500 border border-slate-200'
-                    }`}>
+                    <div
+                      className={`w-11 h-11 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105 ${
+                        isActive
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'bg-slate-100 text-slate-500 border border-slate-200'
+                      }`}
+                    >
                       <sec.icon className="w-5 h-5 stroke-[2]" />
                     </div>
                     <span
@@ -1025,7 +1261,11 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
                           : 'bg-slate-100 text-slate-600 border border-slate-200'
                       }`}
                     >
-                      {isActive ? <CircleDot className="w-2.5 h-2.5 text-emerald-600" /> : <Lock className="w-2.5 h-2.5 text-slate-400" />}
+                      {isActive ? (
+                        <CircleDot className="w-2.5 h-2.5 text-emerald-600" />
+                      ) : (
+                        <Lock className="w-2.5 h-2.5 text-slate-400" />
+                      )}
                       {sec.badge}
                     </span>
                   </div>
@@ -1061,7 +1301,7 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
                   </div>
                   <button
                     onClick={() => setSectorModalInfo(null)}
-                    className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                    className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -1071,7 +1311,7 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
                     <strong className="text-slate-900">Extensible Architecture:</strong> Integrix AI is designed to support {sectorModalInfo.name} through industry-specific document parsers, regulatory rule templates, and claim taxonomy.
                   </p>
                   <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900">
-                    <strong>Planned Roadmap Sector:</strong> This sector's rulebook is not enabled in the current test run. In this verification session, <strong className="underline">NOVAWEAR (Retail & Fashion)</strong> is the only active working sector with live backend verification.
+                    <strong>Planned Roadmap Sector:</strong> This sector rulebook is planned for expansion. In this verification session, <strong className="underline">NOVAWEAR (Retail & Fashion)</strong> is the active working sector with live backend verification.
                   </div>
                   <p>
                     Clicking continue will keep Retail & Fashion as the active sector so you can proceed with the live sample documents.
@@ -1080,25 +1320,26 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
                 <div className="mt-6 flex justify-end gap-2">
                   <button
                     onClick={() => setSectorModalInfo(null)}
-                    className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold"
+                    className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold cursor-pointer"
                   >
-                    Understood – Return to NOVAWEAR
+                    Understood — Return to NOVAWEAR
                   </button>
                 </div>
               </div>
             </div>
           )}
 
+          {/* Navigation Footer */}
           <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
             <button
               onClick={() => onStageChange('org')}
-              className="text-xs font-semibold px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700"
+              className="text-xs font-semibold px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4 mr-1 inline" /> Previous: Organisation
             </button>
             <button
               onClick={() => onStageChange('docs')}
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm transition flex items-center gap-2"
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm transition flex items-center gap-2 cursor-pointer"
             >
               Next: Upload NOVAWEAR Source Documents <ArrowRight className="w-4 h-4" />
             </button>
@@ -1106,13 +1347,13 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
         </div>
       )}
 
-      {/* ──── STAGE 3: GUIDED DOCUMENT UPLOAD WORKSPACE ──── */}
+      {/* ── STAGE 3: DOCUMENT UPLOAD ── */}
       {currentStage === 'docs' && (
         <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm p-6 sm:p-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
-                Stage 3 of 10
+              <span className="text-xs font-bold uppercase tracking-wider text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
+                STAGE 03 OF 10 • PHASE 01: ORGANISATION SETUP
               </span>
               <h3 className="text-xl font-bold text-slate-900 tracking-tight mt-1">
                 Guided Source Document Ingestion Workspace
@@ -1128,18 +1369,18 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
                   setUploadToast('All 5 official NOVAWEAR repository documents verified and synced.');
                   setTimeout(() => setUploadToast(null), 3000);
                 }}
-                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm flex items-center gap-1.5"
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm flex items-center gap-1.5 cursor-pointer"
               >
                 <Sparkles className="w-3.5 h-3.5" /> Upload All 5 Documents (1-Click)
               </button>
             </div>
           </div>
 
-          {/* Real-World Explainer Callout */}
+          {/* Explainer Callout */}
           <div className="my-6 p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-start gap-3">
             <Info className="w-5 h-5 text-indigo-600 flex-shrink-0 mt-0.5" />
             <div className="text-xs text-slate-600 leading-relaxed">
-              <strong className="text-slate-900">How this works in the real world:</strong> Brand and legal teams upload raw master documents (PDF brand guidelines, shipping policies, excel product catalogues). Integrix AI performs OCR, multimodal document layout decomposition, and automated fact extraction to construct the company's verified policy truth graph.
+              <strong className="text-slate-900">How this works in the real world:</strong> Brand and legal teams upload raw master documents (PDF brand guidelines, shipping policies, excel product catalogues). Integrix AI performs OCR, multimodal document layout decomposition, and automated fact extraction to construct the company verified policy truth graph.
             </div>
           </div>
 
@@ -1171,7 +1412,7 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
                     href={d.path}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-xs font-semibold text-slate-600 hover:text-indigo-600 flex items-center gap-1"
+                    className="text-xs font-semibold text-slate-600 hover:text-indigo-600 flex items-center gap-1 cursor-pointer"
                   >
                     <Eye className="w-3.5 h-3.5" /> View Sample Document
                   </a>
@@ -1181,7 +1422,7 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
                       setTimeout(() => setUploadToast(`${d.filename} verified successfully!`), 1000);
                       setTimeout(() => setUploadToast(null), 3500);
                     }}
-                    className="text-xs font-semibold px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700"
+                    className="text-xs font-semibold px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 cursor-pointer"
                   >
                     Re-extract
                   </button>
@@ -1190,16 +1431,17 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
             ))}
           </div>
 
+          {/* Navigation Footer */}
           <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
             <button
               onClick={() => onStageChange('sector')}
-              className="text-xs font-semibold px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700"
+              className="text-xs font-semibold px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4 mr-1 inline" /> Previous: Sector
             </button>
             <button
               onClick={() => onStageChange('extraction')}
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm transition flex items-center gap-2"
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm transition flex items-center gap-2 cursor-pointer"
             >
               Next: View AI Document Extraction Results <ArrowRight className="w-4 h-4" />
             </button>
@@ -1207,19 +1449,19 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
         </div>
       )}
 
-      {/* ──── STAGE 4: AI EXTRACTION RESULTS ──── */}
+      {/* ── STAGE 4: AI DOCUMENT EXTRACTION ── */}
       {currentStage === 'extraction' && (
         <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm p-6 sm:p-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
-                Stage 4 of 10
+              <span className="text-xs font-bold uppercase tracking-wider text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
+                STAGE 04 OF 10 • PHASE 02: POLICY GOVERNANCE
               </span>
               <h3 className="text-xl font-bold text-slate-900 tracking-tight mt-1">
                 Real AI Document Extraction & Ground-Truth Graph
               </h3>
               <p className="text-sm text-slate-600 mt-1">
-                Structured entities and factual assertions extracted from NOVAWEAR master brand collateral with precise page citations.
+                Extract and classify information from NOVAWEAR uploaded source documents with exact page citations and confidence metrics.
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -1282,23 +1524,24 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
                     {fact.sourceDoc}
                   </div>
                   <div className="text-[10px] text-slate-400">
-                    {fact.sourcePage} · {(fact.confidence * 100).toFixed(0)}% AI Confidence
+                    {fact.sourcePage} • {(fact.confidence * 100).toFixed(0)}% AI Confidence
                   </div>
                 </div>
               </div>
             ))}
           </div>
 
+          {/* Navigation Footer */}
           <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
             <button
               onClick={() => onStageChange('docs')}
-              className="text-xs font-semibold px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700"
+              className="text-xs font-semibold px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4 mr-1 inline" /> Previous: Document Upload
             </button>
             <button
               onClick={() => onStageChange('review')}
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm transition flex items-center gap-2"
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm transition flex items-center gap-2 cursor-pointer"
             >
               Next: Review Generated Policy Drafts <ArrowRight className="w-4 h-4" />
             </button>
@@ -1306,27 +1549,133 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
         </div>
       )}
 
-      {/* ──── STAGE 5 & 6: POLICY DRAFT REVIEW & ADMINISTRATOR APPROVAL ──── */}
-      {(currentStage === 'review' || currentStage === 'approval') && (
+      {/* ── STAGE 5: POLICY DRAFT & REVIEW ── */}
+      {currentStage === 'review' && (
         <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm p-6 sm:p-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
-                {currentStage === 'review' ? 'Stage 5 of 10: Policy Review' : 'Stage 6 of 10: Administrator Approval'}
+              <span className="text-xs font-bold uppercase tracking-wider text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
+                STAGE 05 OF 10 • PHASE 02: POLICY GOVERNANCE
               </span>
               <h3 className="text-xl font-bold text-slate-900 tracking-tight mt-1">
-                {currentStage === 'review'
-                  ? 'AI-Synthesised Policy Drafts (Pre-Execution Verification)'
-                  : 'Administrator Policy Governance & Activation Authority'}
+                AI-Synthesised Policy Drafts (Pre-Execution Verification)
               </h3>
               <p className="text-sm text-slate-600 mt-1">
-                <strong className="text-slate-900">Critical Governance Invariant:</strong> AI never autonomously deploys rules into production. All draft policies must be reviewed, fine-tuned, and explicitly approved by an administrator before becoming executable.
+                Examine candidate policy constraints generated from extracted catalogue specifications and marketing guidelines.
               </p>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-xl">
-                {policyDrafts.filter((d) => d.status === 'APPROVED').length} / {policyDrafts.length} Approved
+                {policyDrafts.length} Candidate Rules Synthesised
               </span>
+            </div>
+          </div>
+
+          {/* Governance Notice */}
+          <div className="my-6 p-4 rounded-xl bg-indigo-50/70 border border-indigo-200 flex items-start gap-3">
+            <Info className="w-5 h-5 text-indigo-600 flex-shrink-0 mt-0.5" />
+            <div className="text-xs text-indigo-950 leading-relaxed">
+              <strong>Human-in-the-Loop Governance Guardrail:</strong> AI synthesises suggested rule conditions, but candidate policies are non-executable until signed off by an administrator. In Stage 6, administrators review each condition and grant formal operational sign-off.
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {policyDrafts.map((draft) => (
+              <div
+                key={draft.id}
+                className="p-5 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 transition-all space-y-2.5"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                      {draft.ruleId}
+                    </span>
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                        draft.severity === 'CRITICAL'
+                          ? 'bg-rose-100 text-rose-800'
+                          : draft.severity === 'HIGH'
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-blue-100 text-blue-800'
+                      }`}
+                    >
+                      {draft.severity} SEVERITY
+                    </span>
+                    <span className="text-xs font-semibold text-slate-500">
+                      {draft.category}
+                    </span>
+                  </div>
+
+                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                    Draft Policy Clause
+                  </span>
+                </div>
+
+                <h4 className="text-base font-bold text-slate-900">{draft.title}</h4>
+                <p className="text-xs text-slate-600">{draft.description}</p>
+
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 font-mono text-xs text-indigo-950">
+                  <div className="text-[10px] uppercase font-bold text-slate-400 mb-1">
+                    Machine Rule Condition:
+                  </div>
+                  {draft.condition}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 pt-1">
+                  <span>
+                    <strong>Source:</strong> {draft.sourceDocument}
+                  </span>
+                  <span>
+                    <strong>Rationale:</strong> {draft.rationale}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Navigation Footer */}
+          <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
+            <button
+              onClick={() => onStageChange('extraction')}
+              className="text-xs font-semibold px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4 mr-1 inline" /> Previous: AI Extraction
+            </button>
+            <button
+              onClick={() => onStageChange('approval')}
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm transition flex items-center gap-2 cursor-pointer"
+            >
+              Next: Administrator Approval & Sign-off <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── STAGE 6: ADMINISTRATOR APPROVAL ── */}
+      {currentStage === 'approval' && (
+        <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm p-6 sm:p-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
+                STAGE 06 OF 10 • PHASE 02: POLICY GOVERNANCE
+              </span>
+              <h3 className="text-xl font-bold text-slate-900 tracking-tight mt-1">
+                Administrator Policy Governance & Activation Authority
+              </h3>
+              <p className="text-sm text-slate-600 mt-1">
+                Authoritative compliance sign-off. Only approved rules are dispatched into the live executable policy repository.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
+                {policyDrafts.filter((d) => d.status === 'APPROVED').length} / {policyDrafts.length} Rules Approved
+              </span>
+              <button
+                onClick={handleApproveAllDrafts}
+                className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition flex items-center gap-1 cursor-pointer"
+              >
+                <Check className="w-3.5 h-3.5 stroke-[3]" /> Approve All Drafts
+              </button>
             </div>
           </div>
 
@@ -1336,9 +1685,9 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
                 key={draft.id}
                 className={`p-5 rounded-2xl border transition-all ${
                   draft.status === 'APPROVED'
-                    ? 'border-emerald-200 bg-emerald-50/20'
+                    ? 'border-emerald-300 bg-emerald-50/20 shadow-2xs'
                     : draft.status === 'REJECTED'
-                    ? 'border-rose-200 bg-rose-50/20'
+                    ? 'border-rose-300 bg-rose-50/20'
                     : 'border-slate-200 bg-white'
                 }`}
               >
@@ -1363,7 +1712,7 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
                         {draft.category}
                       </span>
                       <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
                           draft.status === 'APPROVED'
                             ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                             : draft.status === 'REJECTED'
@@ -1399,7 +1748,7 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
                     </div>
 
                     {draft.rejectionReason && (
-                      <div className="text-xs text-rose-700 bg-rose-50 p-2 rounded-lg border border-rose-200">
+                      <div className="text-xs text-rose-700 bg-rose-50 p-2.5 rounded-lg border border-rose-200">
                         <strong>Rejection Reason:</strong> {draft.rejectionReason}
                       </div>
                     )}
@@ -1410,7 +1759,7 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
                     {draft.status !== 'APPROVED' ? (
                       <button
                         onClick={() => handleApproveDraft(draft.id)}
-                        className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm transition flex items-center gap-1"
+                        className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm transition flex items-center gap-1 cursor-pointer"
                       >
                         <Check className="w-3.5 h-3.5 stroke-[3]" /> Approve Rule
                       </button>
@@ -1423,7 +1772,7 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
                     {draft.status !== 'REJECTED' && (
                       <button
                         onClick={() => setRejectingDraftId(draft.id)}
-                        className="px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-rose-50 hover:text-rose-700 text-slate-600 text-xs font-semibold transition"
+                        className="px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-rose-50 hover:text-rose-700 text-slate-600 text-xs font-semibold transition cursor-pointer"
                       >
                         Reject
                       </button>
@@ -1447,7 +1796,7 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
                       />
                       <button
                         onClick={() => handleRejectDraft(draft.id)}
-                        className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg"
+                        className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg cursor-pointer"
                       >
                         Confirm Rejection
                       </button>
@@ -1456,7 +1805,7 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
                           setRejectingDraftId(null);
                           setRejectReason('');
                         }}
-                        className="px-3 py-2 border border-slate-200 text-slate-600 text-xs rounded-lg hover:bg-slate-50"
+                        className="px-3 py-2 border border-slate-200 text-slate-600 text-xs rounded-lg hover:bg-slate-50 cursor-pointer"
                       >
                         Cancel
                       </button>
@@ -1467,16 +1816,17 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
             ))}
           </div>
 
+          {/* Navigation Footer */}
           <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
             <button
-              onClick={() => onStageChange(currentStage === 'approval' ? 'review' : 'extraction')}
-              className="text-xs font-semibold px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700"
+              onClick={() => onStageChange('review')}
+              className="text-xs font-semibold px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 cursor-pointer"
             >
-              <ArrowLeft className="w-4 h-4 mr-1 inline" /> Previous
+              <ArrowLeft className="w-4 h-4 mr-1 inline" /> Previous: Policy Review
             </button>
             <button
               onClick={() => onStageChange('repository')}
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm transition flex items-center gap-2"
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm transition flex items-center gap-2 cursor-pointer"
             >
               Next: Generate Versioned Policy Repository <ArrowRight className="w-4 h-4" />
             </button>
@@ -1484,13 +1834,13 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
         </div>
       )}
 
-      {/* ──── STAGE 7: VERSIONED RULEBOOK REPOSITORY ──── */}
+      {/* ── STAGE 7: VERSIONED POLICY REPOSITORY ── */}
       {currentStage === 'repository' && (
         <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm p-6 sm:p-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
-                Stage 7 of 10
+              <span className="text-xs font-bold uppercase tracking-wider text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
+                STAGE 07 OF 10 • PHASE 02: POLICY GOVERNANCE
               </span>
               <h3 className="text-xl font-bold text-slate-900 tracking-tight mt-1">
                 Versioned Policy Repository (NW-RB-0.1)
@@ -1506,7 +1856,7 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
             </div>
           </div>
 
-          {/* Differentiating human policies vs machine rules */}
+          {/* Comparison human policies vs machine rules */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-6">
             <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200">
               <div className="flex items-center gap-2 mb-3">
@@ -1541,93 +1891,150 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
                 Deterministic algorithmic constraints executed during creative audits. Evaluates multimodal visual creative extractions against catalogue SKU specifications.
               </p>
               <div className="space-y-2 text-xs font-mono text-indigo-900">
-                <div className="p-2 bg-white rounded-lg border border-indigo-100 flex items-center justify-between">
-                  <span>NW-R-001 (CRITICAL)</span>
-                  <span className="text-[10px] text-emerald-700 font-bold">EXECUTABLE</span>
-                </div>
-                <div className="p-2 bg-white rounded-lg border border-indigo-100 flex items-center justify-between">
-                  <span>NW-R-002 (HIGH)</span>
-                  <span className="text-[10px] text-emerald-700 font-bold">EXECUTABLE</span>
-                </div>
-                <div className="p-2 bg-white rounded-lg border border-indigo-100 flex items-center justify-between">
-                  <span>NW-R-003 (HIGH)</span>
-                  <span className="text-[10px] text-emerald-700 font-bold">EXECUTABLE</span>
-                </div>
-                <div className="p-2 bg-white rounded-lg border border-indigo-100 flex items-center justify-between">
-                  <span>NW-R-004 (MEDIUM)</span>
-                  <span className="text-[10px] text-emerald-700 font-bold">EXECUTABLE</span>
-                </div>
-                <div className="p-2 bg-white rounded-lg border border-indigo-100 flex items-center justify-between">
-                  <span>NW-R-005 (MEDIUM)</span>
-                  <span className="text-[10px] text-emerald-700 font-bold">EXECUTABLE</span>
-                </div>
+                {policyDrafts
+                  .filter((d) => d.status === 'APPROVED')
+                  .map((rule) => (
+                    <div
+                      key={rule.id}
+                      className="p-2 bg-white rounded-lg border border-indigo-100 flex items-center justify-between"
+                    >
+                      <span>
+                        {rule.ruleId} ({rule.severity})
+                      </span>
+                      <span className="text-[10px] text-emerald-700 font-bold">EXECUTABLE</span>
+                    </div>
+                  ))}
               </div>
             </div>
           </div>
 
+          {/* Navigation Footer */}
           <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
             <button
               onClick={() => onStageChange('approval')}
-              className="text-xs font-semibold px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700"
+              className="text-xs font-semibold px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4 mr-1 inline" /> Previous: Approval
             </button>
             <button
-              onClick={() => {
-                onStageChange('audit');
-                if (onNavigateToAudit) onNavigateToAudit();
-              }}
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm transition flex items-center gap-2"
+              onClick={() => onStageChange('audit')}
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm transition flex items-center gap-2 cursor-pointer"
             >
-              Next: Audit an Advertisement Against Repository <ArrowRight className="w-4 h-4" />
+              Next: Creative Audit Studio <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         </div>
       )}
 
-      {/* ──── STAGE 8: AUDIT NOTIFICATION CALLOUT (Directs to Audit Studio below) ──── */}
+      {/* ── STAGE 8: CREATIVE AUDIT STUDIO ── */}
       {currentStage === 'audit' && (
-        <div className="bg-indigo-50 border border-indigo-200 rounded-2xl shadow-sm p-6 sm:p-8 mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm p-6 sm:p-8 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-indigo-700 bg-white px-2 py-0.5 rounded border border-indigo-200">
-                Stage 8 of 10
+              <span className="text-xs font-bold uppercase tracking-wider text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
+                STAGE 08 OF 10 • PHASE 03: CONTENT VERIFICATION
               </span>
-              <h3 className="text-xl font-bold text-indigo-950 tracking-tight mt-1">
-                Active Audit Studio & Demo Poster Verification
+              <h3 className="text-xl font-bold text-slate-900 tracking-tight mt-1">
+                Creative Audit Studio & Policy Verification
               </h3>
-              <p className="text-sm text-indigo-900/80 mt-1">
-                Open the dedicated Audit Studio screen to inspect visual creatives via OCR, cross-reference certified catalogue facts, and view live policy checks.
+              <p className="text-sm text-slate-600 mt-1">
+                Audit campaign creatives against catalogue facts and active governance policies in real time.
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => {
-                  if (onNavigateToAudit) onNavigateToAudit();
+                  const el = document.getElementById('evaluator-demo-gallery');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
                 }}
-                className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm flex items-center gap-2 cursor-pointer transition-colors"
+                className="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 text-xs font-bold shadow-2xs flex items-center gap-1.5 cursor-pointer transition-colors"
               >
-                <Zap className="w-4 h-4 text-amber-300" />
-                <span>Open Creative Audit Studio Screen</span> <ArrowRight className="w-4 h-4 ml-1 inline" />
+                <span>Inspect Creative Gallery Below ↓</span>
               </button>
-              <button
-                onClick={() => onStageChange('report')}
-                className="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 text-xs font-semibold shadow-sm flex items-center gap-1.5 cursor-pointer"
-              >
-                Proceed to Violation Report <ArrowRight className="w-4 h-4 ml-1 inline" />
-              </button>
+              {onNavigateToAudit && (
+                <button
+                  onClick={() => onNavigateToAudit()}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <Zap className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Open Dedicated Studio Screen</span>
+                </button>
+              )}
             </div>
+          </div>
+
+          {/* Quick Creative Inspection Grid */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-bold text-slate-900">
+                NOVAWEAR Canonical Campaign Creatives (7 Advertisements)
+              </h4>
+              <span className="text-xs text-slate-500">Dual-Pass OCR & Deterministic Audits</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {canonicalPosters.map((poster) => (
+                <div
+                  key={poster.id}
+                  onClick={() => {
+                    if (onAuditScenarioSelect) onAuditScenarioSelect(poster.id);
+                    const el = document.getElementById('evaluator-demo-gallery');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="p-3.5 rounded-xl border border-slate-200 hover:border-indigo-400 bg-white hover:shadow-2xs transition-all cursor-pointer flex flex-col justify-between"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="mono text-[10px] font-bold text-slate-500">{poster.id}</span>
+                      <span
+                        className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded ${
+                          poster.outcome === 'PASS'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-rose-100 text-rose-800'
+                        }`}
+                      >
+                        {poster.outcome}
+                      </span>
+                    </div>
+                    <div className="text-xs font-bold text-slate-900">{poster.title}</div>
+                    <div className="text-[11px] text-slate-500">
+                      SKU: <strong className="text-slate-700">{poster.sku}</strong> • Price: {poster.price}
+                    </div>
+                  </div>
+
+                  <div className="mt-2.5 pt-2 border-t border-slate-100 text-[10px] text-slate-500 line-clamp-1">
+                    {poster.issue}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Navigation Footer */}
+          <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
+            <button
+              onClick={() => onStageChange('repository')}
+              className="text-xs font-semibold px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4 mr-1 inline" /> Previous: Policy Repository
+            </button>
+            <button
+              onClick={() => onStageChange('report')}
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm transition flex items-center gap-2 cursor-pointer"
+            >
+              Next: View Violation Report <ArrowRight className="w-4 h-4" />
+            </button>
           </div>
         </div>
       )}
 
-      {/* ──── STAGE 9: COMPREHENSIVE VIOLATION REPORT ──── */}
+      {/* ── STAGE 9: VIOLATION REPORT ── */}
       {currentStage === 'report' && (
         <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm p-6 sm:p-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
-                Stage 9 of 10
+              <span className="text-xs font-bold uppercase tracking-wider text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
+                STAGE 09 OF 10 • PHASE 03: CONTENT VERIFICATION
               </span>
               <h3 className="text-xl font-bold text-slate-900 tracking-tight mt-1">
                 Detailed Brand Violation Analysis & Audit Report
@@ -1639,14 +2046,14 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
             <div className="flex items-center gap-2">
               <button
                 onClick={() => window.print()}
-                className="px-3.5 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5"
+                className="px-3.5 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5" /> Download / Print Report (PDF)
               </button>
             </div>
           </div>
 
-          {/* Sample Active Creative Selection for Report */}
+          {/* Creative Selection for Report */}
           <div className="flex flex-wrap items-center gap-2 my-4">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-2">
               Inspect Report For:
@@ -1655,7 +2062,7 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
               <button
                 key={adId}
                 onClick={() => setActiveDecisionAd(adId)}
-                className={`px-3 py-1 text-xs font-semibold rounded-lg transition ${
+                className={`px-3 py-1 text-xs font-semibold rounded-lg transition cursor-pointer ${
                   activeDecisionAd === adId
                     ? 'bg-indigo-600 text-white'
                     : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
@@ -1691,16 +2098,16 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
           {/* Detailed Findings Table */}
           <div className="border border-slate-200 rounded-xl overflow-hidden mt-6">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase font-bold text-[10px]">
+              <thead className="bg-slate-100 text-slate-600 uppercase text-[10px] font-bold">
                 <tr>
                   <th className="py-3 px-4">Rule Violation</th>
                   <th className="py-3 px-4">Severity</th>
-                  <th className="py-3 px-4">Detected Text / Evidence</th>
-                  <th className="py-3 px-4">Policy Rationale</th>
-                  <th className="py-3 px-4">Recommended Correction</th>
+                  <th className="py-3 px-4">Detected Evidence</th>
+                  <th className="py-3 px-4">Ground-Truth Policy Conflict</th>
+                  <th className="py-3 px-4">Do-This-Instead Remediation</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-200">
                 <tr>
                   <td className="py-3.5 px-4 font-bold text-slate-900">
                     <div>NW-R-002</div>
@@ -1711,9 +2118,7 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
                       HIGH
                     </span>
                   </td>
-                  <td className="py-3.5 px-4 font-mono text-slate-700">
-                    "₹799 ONLY"
-                  </td>
+                  <td className="py-3.5 px-4 font-mono text-slate-700">"₹799 ONLY"</td>
                   <td className="py-3.5 px-4 text-slate-600">
                     Catalogue base MRP is ₹1,499. Approved campaign floor price is ₹999. Advertised ₹799 creates misleading pricing claim.
                   </td>
@@ -1731,9 +2136,7 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
                       MEDIUM
                     </span>
                   </td>
-                  <td className="py-3.5 px-4 font-mono text-slate-700">
-                    No "*T&C Apply" text found
-                  </td>
+                  <td className="py-3.5 px-4 font-mono text-slate-700">No "*T&C Apply" text found</td>
                   <td className="py-3.5 px-4 text-slate-600">
                     MCP-01 Section 5 mandates prominent disclaimer on all promotional pricing.
                   </td>
@@ -1745,16 +2148,17 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
             </table>
           </div>
 
+          {/* Navigation Footer */}
           <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
             <button
               onClick={() => onStageChange('audit')}
-              className="text-xs font-semibold px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700"
+              className="text-xs font-semibold px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 cursor-pointer"
             >
-              <ArrowLeft className="w-4 h-4 mr-1 inline" /> Previous: Audit Studio
+              <ArrowLeft className="w-4 h-4 mr-1 inline" /> Previous: Creative Audit Studio
             </button>
             <button
               onClick={() => onStageChange('decision')}
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm transition flex items-center gap-2"
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm transition flex items-center gap-2 cursor-pointer"
             >
               Next: Administrator Adjudication & Decision <ArrowRight className="w-4 h-4" />
             </button>
@@ -1762,13 +2166,13 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
         </div>
       )}
 
-      {/* ──── STAGE 10: ADMINISTRATOR DECISION & ENFORCEMENT ──── */}
+      {/* ── STAGE 10: ADMINISTRATOR DECISION ── */}
       {currentStage === 'decision' && (
         <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm p-6 sm:p-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
-                Stage 10 of 10
+              <span className="text-xs font-bold uppercase tracking-wider text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
+                STAGE 10 OF 10 • PHASE 04: FINAL DECISION
               </span>
               <h3 className="text-xl font-bold text-slate-900 tracking-tight mt-1">
                 Administrator Adjudication & Enforcement Workflow
@@ -1802,7 +2206,7 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
                       if (dec.rejectionReason) setDecisionRejectionReason(dec.rejectionReason);
                     }
                   }}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-xl border transition flex items-center gap-1.5 ${
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-xl border transition flex items-center gap-1.5 cursor-pointer ${
                     activeDecisionAd === adId
                       ? 'bg-indigo-600 text-white border-indigo-600'
                       : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
@@ -1865,7 +2269,7 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
                       key={act}
                       type="button"
                       onClick={() => setDecisionAction(act)}
-                      className={`px-3 py-2 rounded-xl text-xs font-bold border transition text-center ${
+                      className={`px-3 py-2 rounded-xl text-xs font-bold border transition text-center cursor-pointer ${
                         decisionAction === act
                           ? act === 'APPROVE'
                             ? 'bg-emerald-600 text-white border-emerald-600'
@@ -1926,7 +2330,7 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
                 <button
                   type="button"
                   onClick={handleSaveDecision}
-                  className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-bold shadow-sm transition flex items-center gap-1.5"
+                  className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-bold shadow-sm transition flex items-center gap-1.5 cursor-pointer"
                 >
                   <ShieldCheck className="w-4 h-4 text-emerald-400" /> Commit Adjudication Record
                 </button>
@@ -1934,23 +2338,81 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
             </div>
           </div>
 
+          {/* Navigation Footer */}
           <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
             <button
               onClick={() => onStageChange('report')}
-              className="text-xs font-semibold px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700"
+              className="text-xs font-semibold px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4 mr-1 inline" /> Previous: Violation Report
             </button>
             <button
               onClick={() => onStageChange('org')}
-              className="px-5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-800 text-xs font-semibold shadow-sm transition flex items-center gap-2"
+              className="px-5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-800 text-xs font-semibold shadow-sm transition flex items-center gap-2 cursor-pointer"
             >
               Restart Lifecycle Workflow <RotateCcw className="w-3.5 h-3.5 ml-1 inline" />
             </button>
           </div>
         </div>
       )}
+
+      {/* ─────────────────────────────────────────────────────────────
+          SECTION 5: PERSISTENT STAGE NAVIGATION CONTROLS (Footer Bar)
+          ───────────────────────────────────────────────────────────── */}
+      <div className="bg-slate-900 text-white rounded-2xl p-4 sm:px-6 sm:py-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md">
+        <button
+          onClick={() => {
+            if (safeCurrentStageIndex > 0) {
+              onStageChange(stages[safeCurrentStageIndex - 1].id);
+            }
+          }}
+          disabled={safeCurrentStageIndex === 0}
+          className="w-full sm:w-auto px-4 py-2 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold text-white transition flex items-center justify-center gap-1.5 cursor-pointer"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>
+            {safeCurrentStageIndex > 0
+              ? `Previous: ${stages[safeCurrentStageIndex - 1].short}`
+              : 'At First Stage'}
+          </span>
+        </button>
+
+        {/* Center Stage & Phase Status */}
+        <div className="text-center">
+          <div className="text-xs font-extrabold text-white">
+            Stage {currentStageObj.number} of 10: {currentStageObj.label}
+          </div>
+          <div className="text-[11px] text-slate-400 mt-0.5 flex items-center justify-center gap-1.5">
+            <span className="mono text-indigo-400 font-bold">{currentStageObj.phaseNumber}</span>
+            <span>•</span>
+            <span>{currentStageObj.phaseTitle}</span>
+            <span>•</span>
+            <span className="text-emerald-400 font-semibold">{overallProgressPct}% Complete</span>
+          </div>
+        </div>
+
+        <button
+          onClick={() => {
+            if (safeCurrentStageIndex < stages.length - 1) {
+              onStageChange(stages[safeCurrentStageIndex + 1].id);
+            } else {
+              onStageChange('org');
+            }
+          }}
+          className="w-full sm:w-auto px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white shadow-sm transition flex items-center justify-center gap-1.5 cursor-pointer"
+        >
+          <span>
+            {safeCurrentStageIndex < stages.length - 1
+              ? `Next: ${stages[safeCurrentStageIndex + 1].short}`
+              : 'Restart Lifecycle'}
+          </span>
+          {safeCurrentStageIndex < stages.length - 1 ? (
+            <ArrowRight className="w-4 h-4" />
+          ) : (
+            <RotateCcw className="w-3.5 h-3.5 ml-0.5" />
+          )}
+        </button>
+      </div>
     </div>
   );
 };
-

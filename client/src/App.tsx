@@ -419,7 +419,19 @@ export const App: React.FC = () => {
   const [exportOpen, setExportOpen] = useState(false);
   const [runAllStatus, setRunAllStatus] = useState<string | null>(null);
   const [showExpectedOutcome, setShowExpectedOutcome] = useState(false);
-  const [lifecycleStage, setLifecycleStage] = useState<LifecycleStage>('org');
+  const [lifecycleStage, setLifecycleStage] = useState<LifecycleStage>(() => {
+    try {
+      const saved = localStorage.getItem('integrix_lifecycle_stage');
+      const validStages: LifecycleStage[] = [
+        'org', 'sector', 'docs', 'extraction', 'review',
+        'approval', 'repository', 'audit', 'report', 'decision'
+      ];
+      if (saved && validStages.includes(saved as LifecycleStage)) {
+        return saved as LifecycleStage;
+      }
+    } catch {}
+    return 'org';
+  });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<'workspace' | 'governance' | 'insights' | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -1395,9 +1407,9 @@ export const App: React.FC = () => {
                 currentStage={lifecycleStage}
                 onStageChange={(newStage) => {
                   setLifecycleStage(newStage);
-                  if (newStage === 'audit') {
-                    nav('audit');
-                  }
+                  try {
+                    localStorage.setItem('integrix_lifecycle_stage', newStage);
+                  } catch {}
                 }}
                 onNavigateToAudit={() => {
                   nav('audit');

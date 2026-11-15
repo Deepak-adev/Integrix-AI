@@ -2,6 +2,13 @@ import { Request, Response, NextFunction } from 'express';
 import type { OrganisationContext } from '../types/index.js';
 import { OrganisationResolutionError } from '../services/organisation/organisation-resolver.js';
 import { organisationResolver } from '../services/organisation/index.js';
+import { getAuditDataSourceMode } from '../services/audit-engine/audit-source-config.js';
+
+export const DEFAULT_FILE_ORGANISATION: OrganisationContext = {
+  organisationId: 'novawear-default-org',
+  organisationSlug: 'novawear',
+  organisationName: 'NOVAWEAR Retail Private Limited',
+};
 
 /** Minimal resolver contract required by the middleware (test-friendly). */
 export interface OrganisationResolverLike {
@@ -23,9 +30,19 @@ export function createOrganisationMiddleware(resolver: OrganisationResolverLike)
     next: NextFunction
   ): Promise<void> {
     try {
+      if (getAuditDataSourceMode() === 'file') {
+        req.organisation = DEFAULT_FILE_ORGANISATION;
+        next();
+        return;
+      }
       req.organisation = await resolver.resolve();
       next();
     } catch (err) {
+      if (getAuditDataSourceMode() === 'file') {
+        req.organisation = DEFAULT_FILE_ORGANISATION;
+        next();
+        return;
+      }
       if (err instanceof OrganisationResolutionError) {
         const status =
           err.code === 'ORG_NOT_FOUND'

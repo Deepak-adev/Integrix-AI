@@ -5,6 +5,7 @@ import {
   LOCAL_CAMPAIGNS,
   LOCAL_RULES,
   runClientSideScenarioAudit,
+  runClientSideTextAudit,
   runAllClientSideScenarios,
 } from './local-audit-engine';
 
@@ -59,13 +60,23 @@ export async function analyzeText(text: string, metadata?: any): Promise<AuditRe
       body: JSON.stringify({ text, metadata }),
     });
   } catch (err: any) {
-    console.warn('[API] Backend unreachable, falling back to client-side evaluation:', err);
-    const clientAudit = runClientSideScenarioAudit('SCENARIO-1');
-    return clientAudit.result;
+    console.warn('[API] Backend unreachable, falling back to local audit engine:', err);
+    return runClientSideTextAudit(text, metadata);
   }
 
   if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({ error: `HTTP ${response.status} Error` }));
+    let errorBody: any = null;
+    try {
+      errorBody = await response.json();
+    } catch {
+      errorBody = { error: `HTTP ${response.status} Error` };
+    }
+
+    if (response.status >= 500) {
+      console.warn(`[API] Server returned HTTP ${response.status}, falling back to local audit engine:`, errorBody);
+      return runClientSideTextAudit(text, metadata);
+    }
+
     throw new ApiError(response.status, errorBody.error || errorBody.message || 'Text audit failed', errorBody);
   }
 
@@ -85,12 +96,22 @@ export async function verifyRawText(text: string, metadata?: any): Promise<Audit
     });
   } catch (err: any) {
     console.warn('[API] Backend unreachable, running in client-side mode:', err);
-    const clientAudit = runClientSideScenarioAudit('SCENARIO-1');
-    return clientAudit.result;
+    return runClientSideTextAudit(text, metadata);
   }
 
   if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({ error: `HTTP ${response.status} Error` }));
+    let errorBody: any = null;
+    try {
+      errorBody = await response.json();
+    } catch {
+      errorBody = { error: `HTTP ${response.status} Error` };
+    }
+
+    if (response.status >= 500) {
+      console.warn(`[API] Server returned HTTP ${response.status}, running in client-side mode:`, errorBody);
+      return runClientSideTextAudit(text, metadata);
+    }
+
     throw new ApiError(response.status, errorBody.error || errorBody.message || 'Text verification failed', errorBody);
   }
 
