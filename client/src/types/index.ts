@@ -122,6 +122,7 @@ export interface Organisation {
   color: string;
   complianceTolerance: 'Strict' | 'Standard' | 'Permissive';
   isDefault?: boolean;
+  logoUrl?: string;
 }
 
 export interface PolicyRuleItem {

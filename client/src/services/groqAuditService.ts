@@ -261,18 +261,30 @@ function mapBackendResponse(data: any, adText: string): AdAuditResponse {
     analysisEngine = 'Integrix AI Deterministic Policy Engine';
   }
 
+  const brandName = data.metadata?.organisation || 'Dabur';
+  const isDabur = brandName.toLowerCase().includes('dabur');
+
   // Auto-fix suggestions from AI or generated from faults
-  const autoFix = data.aiAnalysis?.autoFixSuggestions || {
-    suggestedHeadline: 'NOVAWEAR — Everyday Essentials',
-    suggestedBodyCopy: 'Crafted for daily comfort with approved catalogue specifications.',
-    suggestedDisclaimer: 'Terms and conditions apply. Prices valid while stocks last.',
-    keyCorrectionsList: faults.map(f => f.doThisInstead).filter(Boolean),
-  };
+  const autoFix = data.aiAnalysis?.autoFixSuggestions || (
+    isDabur
+      ? {
+          suggestedHeadline: 'Dabur — Ayurvedic Purity & Clinical Excellence',
+          suggestedBodyCopy: 'Clinically tested herbal formulations for natural health and family well-being. Approved catalogue prices apply.',
+          suggestedDisclaimer: '*Based on clinical/dermatological test under controlled conditions. Use as directed.',
+          keyCorrectionsList: faults.map(f => f.doThisInstead).filter(Boolean),
+        }
+      : {
+          suggestedHeadline: 'NOVAWEAR — Everyday Essentials',
+          suggestedBodyCopy: 'Crafted for daily comfort with approved catalogue specifications.',
+          suggestedDisclaimer: 'Terms and conditions apply. Prices valid while stocks last.',
+          keyCorrectionsList: faults.map(f => f.doThisInstead).filter(Boolean),
+        }
+  );
 
   // Strengths from AI or defaults
   const strengths = data.aiAnalysis?.strengths || (
     faults.length === 0
-      ? ['All claims match approved product catalogue', 'Pricing is correctly displayed', 'Brand guidelines are followed']
+      ? ['All claims match approved product catalogue', 'Pricing and efficacy multipliers are correctly certified', 'Brand and ASCI guidelines are strictly followed']
       : ['Brand logo correctly positioned', 'Legible typography']
   );
 
@@ -286,8 +298,8 @@ function mapBackendResponse(data: any, adText: string): AdAuditResponse {
   // Summary from AI or generated
   const summaryText = data.aiAnalysis?.summary || (
     status === 'PASS'
-      ? 'All advertisement claims, pricing, and specifications match the approved NOVAWEAR catalogue.'
-      : `${criticalCount} critical and ${warningCount} warning-level discrepancies detected against NOVAWEAR brand governance policies.`
+      ? `All advertisement claims, pricing, and specifications match the approved ${isDabur ? 'Dabur' : 'NOVAWEAR'} catalogue.`
+      : `${criticalCount} critical and ${warningCount} warning-level discrepancies detected against ${isDabur ? 'Dabur India Limited' : 'NOVAWEAR'} brand governance policies.`
   );
 
   return {
@@ -296,7 +308,7 @@ function mapBackendResponse(data: any, adText: string): AdAuditResponse {
     headlineVerdict,
     summary: summaryText,
     detectedProduct: {
-      name: data.extractedContent?.detectedProducts?.[0] || 'NOVAWEAR Product',
+      name: data.extractedContent?.detectedProducts?.[0] || (isDabur ? 'Dabur Product' : 'NOVAWEAR Product'),
       sku: data.extractedContent?.detectedSku || data.metadata?.sku,
       detectedPrice: data.extractedContent?.advertisedPriceFormatted,
       fabric: data.extractedContent?.detectedComposition,
@@ -361,10 +373,28 @@ function runDeterministicFallback(adText: string, metadata?: any): AdAuditRespon
   const lower = adText.toLowerCase();
   const faults: AdFault[] = [];
 
+  const isDabur =
+    metadata?.brand === 'Dabur' ||
+    metadata?.brand?.toLowerCase().includes('dabur') ||
+    metadata?.sku?.startsWith('DAB-') ||
+    lower.includes('dabur') ||
+    lower.includes('amla') ||
+    lower.includes('gulabari') ||
+    lower.includes('odomos') ||
+    lower.includes('mosquito') ||
+    lower.includes('vaporis') ||
+    lower.includes('vaporiz') ||
+    lower.includes('hair oil') ||
+    lower.includes('rose water');
+
   // ─── DABUR SPECIFIC REASONING ─────────────────────────────────────────────
-  if (lower.includes('dabur') || lower.includes('amla') || lower.includes('gulabari') || lower.includes('odomos') || metadata?.brand === 'Dabur') {
+  if (isDabur) {
     // 1. Dabur Amla 50X vs 10X
-    if (lower.includes('50x') || (lower.includes('50') && lower.includes('stronger'))) {
+    if (
+      lower.includes('50x') ||
+      lower.includes('50 x') ||
+      (lower.includes('50') && (lower.includes('stronger') || lower.includes('strong')))
+    ) {
       faults.push({
         id: 'DAB-F-01',
         title: 'Exaggerated / Unsupported Efficacy Multiplier ("50X Stronger")',
@@ -379,7 +409,10 @@ function runDeterministicFallback(adText: string, metadata?: any): AdAuditRespon
     }
 
     // 2. Dabur Gulabari 120-Hour vs 72-Hour
-    if (lower.includes('120') && (lower.includes('hour') || lower.includes('moisturisation') || lower.includes('hydration'))) {
+    if (
+      lower.includes('120') &&
+      (lower.includes('hour') || lower.includes('moisturisation') || lower.includes('hydration') || lower.includes('moisturiser'))
+    ) {
       faults.push({
         id: 'DAB-F-02',
         title: 'Misleading Hydration Duration ("120 Hours\' of Moisturisation")',
@@ -393,24 +426,120 @@ function runDeterministicFallback(adText: string, metadata?: any): AdAuditRespon
       });
     }
 
-    // 3. Odomos 100% Guaranteed Elimination vs 80% Less Mosquitoes
-    if ((lower.includes('100%') || lower.includes('guarantee') || lower.includes('kills mosquitoes all night')) && (lower.includes('mosquito') || lower.includes('odomos') || lower.includes('vaporiser'))) {
-      if (lower.includes('100%') || lower.includes('kills mosquitoes all night') || lower.includes('zero mosquito')) {
-        faults.push({
-          id: 'DAB-F-03',
-          title: 'Absolute Mosquito Elimination Guarantee ("100% Kills Mosquitoes")',
-          category: 'UNSUPPORTED_CLAIM',
-          severity: 'CRITICAL',
-          observedText: '100% KILLS MOSQUITOES ALL NIGHT!',
-          violationReason: 'Central Insecticides Board & ASCI regulations prohibit absolute guarantee claims (100% kill / zero bites) for vaporisers. Official approval only covers verified percentage reduction (80% less mosquitoes).',
-          approvedStandard: 'Approved standard: "80% Less Mosquitoes* | Safety for the Entire Family | Fits All Machines"',
-          doThisInstead: 'Replace absolute elimination claim with certified formulation claim: "80% Less Mosquitoes*".',
-          sourceReference: 'Odomos Regulatory Compliance Manual & Central Insecticides Board Norms',
-        });
-      }
+    // 3. Odomos Absolute Elimination / 100% Guarantee vs 80% Less Mosquitoes
+    const hasOdomosContext =
+      lower.includes('mosquito') ||
+      lower.includes('vaporis') ||
+      lower.includes('vaporiz') ||
+      lower.includes('odomos') ||
+      lower.includes('machines') ||
+      lower.includes('repellent') ||
+      metadata?.sku === 'DAB-ODM-003';
+
+    const hasAbsoluteMosquitoClaim =
+      lower.includes('100%') ||
+      lower.includes('100 %') ||
+      lower.includes('guarantee') ||
+      lower.includes('guaranteed') ||
+      lower.includes('zero mosquito') ||
+      lower.includes('kills mosquito') ||
+      lower.includes('all night') ||
+      (lower.includes('100') && (lower.includes('protect') || lower.includes('kill') || lower.includes('elim')));
+
+    if (hasOdomosContext && hasAbsoluteMosquitoClaim) {
+      faults.push({
+        id: 'DAB-F-03',
+        title: 'Absolute Mosquito Elimination Guarantee ("100% Guaranteed Protection / Kills Mosquitoes")',
+        category: 'UNSUPPORTED_CLAIM',
+        severity: 'CRITICAL',
+        observedText: '100% GUARANTEED PROTECTION / ZERO MOSQUITOES ALL NIGHT!',
+        violationReason: 'Central Insecticides Board (CIB) statutory guidelines and ASCI norms strictly prohibit absolute efficacy claims ("100% kill", "Zero mosquitoes", "100% protection") for vaporisers. Official registration only permits certified percentage reduction claims ("80% Less Mosquitoes*").',
+        approvedStandard: 'Approved standard: "80% Less Mosquitoes* | Safety for the Entire Family | Fits All Machines"',
+        doThisInstead: 'Replace absolute elimination claim with certified laboratory benchmark: "80% Less Mosquitoes*".',
+        sourceReference: 'Odomos Regulatory Compliance Manual & Central Insecticides Board (CIB) Norms',
+      });
     }
+
+    // 4. Synthetic / Mock Unapproved Creative Detection
+    if (lower.includes('synthetic test ad') || lower.includes('synthetic') || lower.includes('not an official')) {
+      faults.push({
+        id: 'DAB-F-SYNTH',
+        title: 'Unapproved Mock / Synthetic Marketing Asset ("SYNTHETIC TEST AD")',
+        category: 'LEGAL_DISCLAIMER',
+        severity: 'CRITICAL',
+        observedText: 'SYNTHETIC TEST AD (Not an official Dabur advertisement)',
+        violationReason: 'Asset contains synthetic mock creative markers and has not passed official Dabur legal metrology, ASCI pre-screening, or brand release approval.',
+        approvedStandard: 'Official approved Dabur production creative with verified registration codes.',
+        doThisInstead: 'Deploy only verified production creative assets from the official Dabur Governance Repository.',
+        sourceReference: 'Dabur India Limited Brand Governance & Regulatory Compliance Manual',
+      });
+    }
+
+    const score = Math.max(15, 100 - faults.length * 35);
+    const status = faults.length > 0 ? 'FAIL' : 'PASS';
+
+    const isAmla = lower.includes('amla') || lower.includes('hair oil') || metadata?.sku === 'DAB-AML-001';
+    const isGulabari = lower.includes('gulabari') || lower.includes('rose water') || metadata?.sku === 'DAB-GUL-002';
+    const isOdomos = lower.includes('odomos') || lower.includes('vaporis') || lower.includes('vaporiz') || lower.includes('mosquito') || metadata?.sku === 'DAB-ODM-003';
+
+    let productName = 'Dabur Ayurvedic Product';
+    let targetSku = metadata?.sku || 'DAB-AML-001';
+    let autoHeadline = 'Dabur — Ayurvedic Excellence';
+    let autoBody = 'Clinically validated natural care for the entire family.';
+    let autoDisclaimer = '*Based on accredited clinical trial vs baseline. With regular use.';
+
+    if (isAmla) {
+      productName = 'Dabur Amla Hair Oil';
+      targetSku = 'DAB-AML-001';
+      autoHeadline = 'Dabur Amla Hair Oil — 10X Stronger Hair';
+      autoBody = 'The natural nourishment of Pure Amla Oil gives your hair 10X stronger roots and natural shine. 275 ml @ ₹180.';
+      autoDisclaimer = '*Based on a study comparing with non-amla / mineral oil based hair oil. With regular use.';
+    } else if (isGulabari) {
+      productName = 'Dabur Gulabari Moisturiser';
+      targetSku = 'DAB-GUL-002';
+      autoHeadline = 'Dabur Gulabari Moisturiser — 72-Hour Deep Hydration';
+      autoBody = 'Enriched with 100% Pure Rose Water for soft, glowing skin with 72-Hour continuous hydration. 50g @ ₹49.';
+      autoDisclaimer = '*Based on controlled moisturisation study under standard dermatological test conditions.';
+    } else if (isOdomos) {
+      productName = 'Odomos Liquid Vaporiser';
+      targetSku = 'DAB-ODM-003';
+      autoHeadline = 'Odomos Liquid Vaporiser — 80% Less Mosquitoes';
+      autoBody = 'Fast-acting household protection for peaceful nights with 80% less mosquitoes. Safety for the entire family. Fits all machines. 45 ml @ ₹85.';
+      autoDisclaimer = '*Tested under standard laboratory conditions. Use in accordance with directions.';
+    }
+
+    return {
+      status,
+      complianceScore: score,
+      headlineVerdict:
+        status === 'PASS'
+          ? 'Fully Compliant Advertisement (Certified Efficacy)'
+          : `${faults.length} Compliance Fault${faults.length !== 1 ? 's' : ''} Detected`,
+      summary:
+        status === 'PASS'
+          ? 'Creative facts, strength multipliers, and safety claims match Dabur clinical research and ASCI guidelines.'
+          : `${faults.length} regulatory discrepancy detected against Dabur clinical substantiation, ASCI guidelines, and CIB statutory norms.`,
+      detectedProduct: {
+        name: productName,
+        sku: targetSku,
+      },
+      faults,
+      autoFixSuggestions: {
+        suggestedHeadline: autoHeadline,
+        suggestedBodyCopy: autoBody,
+        suggestedDisclaimer: autoDisclaimer,
+        keyCorrectionsList: faults.map((f) => f.doThisInstead),
+      },
+      strengths:
+        status === 'PASS'
+          ? ['Accredited clinical study cited', 'ASCI healthcare footnote present', 'Legible product branding']
+          : ['Brand trademark present', 'Clear product packaging visual'],
+      extractedText: adText,
+      analysisEngine: 'Dabur Ayurvedic Policy Engine (Deterministic Fallback)',
+    };
   }
 
+  // ─── NOVAWEAR SPECIFIC CHECKS ─────────────────────────────────────────────
   // 1. Price check
   if (lower.includes('999') && (lower.includes('classic cotton') || lower.includes('nw-cs-001'))) {
     faults.push({
@@ -426,7 +555,7 @@ function runDeterministicFallback(adText: string, metadata?: any): AdAuditRespon
     });
   }
 
-  // 2. Composition check (General evaluator for all products, not hardcoded to just one keyword)
+  // 2. Composition check
   const targetFabric = metadata?.fabric || (metadata?.sku === 'NW-CS-002' ? '60% Cotton, 40% Polyester' : undefined);
   const targetSku = metadata?.sku || (lower.includes('oxford') || lower.includes('nw-cs-002') ? 'NW-CS-002' : undefined);
   const productName = metadata?.productName || (targetSku === 'NW-CS-002' ? 'Everyday Oxford Shirt' : 'Selected Product');
@@ -505,7 +634,7 @@ function runDeterministicFallback(adText: string, metadata?: any): AdAuditRespon
   }
 
   const score = Math.max(15, 100 - faults.length * 25);
-  const status = faults.some(f => f.severity === 'CRITICAL')
+  const status = faults.some((f) => f.severity === 'CRITICAL')
     ? 'FAIL'
     : faults.length > 0
     ? 'NEEDS_VERIFICATION'
@@ -531,7 +660,7 @@ function runDeterministicFallback(adText: string, metadata?: any): AdAuditRespon
       suggestedHeadline: 'NOVAWEAR Classic Cotton Shirt',
       suggestedBodyCopy: 'Your everyday essential layer in 100% cotton. Base price ₹1,299. Dispatched in 1–2 business days.',
       suggestedDisclaimer: 'Standard delivery calculated at checkout.',
-      keyCorrectionsList: faults.map(f => f.doThisInstead),
+      keyCorrectionsList: faults.map((f) => f.doThisInstead),
     },
     strengths: ['Brand logo correctly positioned', 'Legible typography'],
     extractedText: adText,

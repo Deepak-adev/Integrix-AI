@@ -22,15 +22,20 @@ const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB
 
 interface CreativeAuditPageProps {
   organisation?: string;
+  activeOrg?: any;
+  products?: any[];
 }
 
 export const CreativeAuditPage: React.FC<CreativeAuditPageProps> = ({
-  organisation = 'NOVAWEAR',
+  organisation: propOrg,
+  activeOrg,
+  products = [],
 }) => {
+  const organisation = propOrg || activeOrg?.name || 'Dabur';
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [publicationChannel, setPublicationChannel] = useState('NOVAWEAR website');
-  const [publicationDate, setPublicationDate] = useState('2026-11-13');
+  const [publicationChannel, setPublicationChannel] = useState(`${organisation} Official Channel`);
+  const [publicationDate, setPublicationDate] = useState('2026-11-16');
   const [sku, setSku] = useState('');
   const [submissionId, setSubmissionId] = useState('');
   const [isDragOver, setIsDragOver] = useState(false);
@@ -242,10 +247,10 @@ export const CreativeAuditPage: React.FC<CreativeAuditPageProps> = ({
                   onChange={(e) => setPublicationChannel(e.target.value)}
                   className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-800 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 >
-                  <option value="NOVAWEAR website">NOVAWEAR website</option>
-                  <option value="Instagram Shop">Instagram Shop</option>
-                  <option value="Print / Catalogue">Print / Catalogue</option>
-                  <option value="Newsletter">Newsletter</option>
+                  <option value={`${organisation} Official Channel`}>{organisation} Official Website & E-Store</option>
+                  <option value="Instagram / Social Shop">Instagram & Social Media</option>
+                  <option value="Print / Catalogue">Print / Product Catalogue</option>
+                  <option value="Retail & Trade Marketing">Retail & Modern Trade</option>
                   <option value="General">General / All Channels</option>
                 </select>
               </div>

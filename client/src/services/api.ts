@@ -7,6 +7,13 @@ import {
   runClientSideScenarioAudit,
   runAllClientSideScenarios,
 } from './local-audit-engine';
+import {
+  getStoredActiveOrgId,
+  getStoredProductsForOrg,
+  getStoredRulesForOrg,
+  getCampaignsForOrg,
+  getPoliciesForOrg,
+} from './governanceStorage';
 
 const API_BASE = '/api/audit';
 
@@ -186,9 +193,11 @@ export async function runAllScenarios(): Promise<{
   return runAllClientSideScenarios();
 }
 
-export async function getRepositoryStats(): Promise<RepositoryStats> {
+export async function getRepositoryStats(orgId?: string): Promise<RepositoryStats> {
+  const currentOrgId = orgId || getStoredActiveOrgId();
+
   try {
-    const response = await fetch(`${API_BASE}/repository`);
+    const response = await fetch(`${API_BASE}/repository?orgId=${encodeURIComponent(currentOrgId)}`);
     if (response.ok) {
       return await response.json();
     }
@@ -196,18 +205,25 @@ export async function getRepositoryStats(): Promise<RepositoryStats> {
     console.warn('[API] Backend unreachable, using embedded repository statistics.');
   }
 
+  const isDabur = currentOrgId === 'org-dabur' || currentOrgId.toLowerCase().includes('dabur');
+
+  if (isDabur) {
+    return {
+      organisation: 'Dabur India Limited',
+      referenceDate: '2026-11-16',
+      products: getStoredProductsForOrg('org-dabur'),
+      campaigns: getCampaignsForOrg('org-dabur'),
+      rules: getStoredRulesForOrg('org-dabur'),
+      indexedPolicies: getPoliciesForOrg('org-dabur'),
+    };
+  }
+
   return {
     organisation: 'NOVAWEAR (NovaWear Retail Private Limited)',
     referenceDate: '2026-11-13',
-    products: LOCAL_PRODUCTS,
-    campaigns: LOCAL_CAMPAIGNS,
-    rules: LOCAL_RULES,
-    indexedPolicies: [
-      { id: 'SRC-NW-001', name: '01_Brand_Guidelines.pdf', status: 'Indexed' },
-      { id: 'SRC-NW-002', name: '02_Company_Profile.pdf', status: 'Indexed' },
-      { id: 'SRC-NW-003', name: '03_Marketing_and_Communication_Policy.pdf', status: 'Indexed' },
-      { id: 'SRC-NW-004', name: '04_Product_and_Customer_Information_Policy.pdf', status: 'Indexed' },
-      { id: 'SRC-NW-005', name: '05_Product_Catalogue_and_Campaigns.xlsx', status: 'Indexed' },
-    ],
+    products: getStoredProductsForOrg('org-novawear'),
+    campaigns: getCampaignsForOrg('org-novawear'),
+    rules: getStoredRulesForOrg('org-novawear'),
+    indexedPolicies: getPoliciesForOrg('org-novawear'),
   };
 }

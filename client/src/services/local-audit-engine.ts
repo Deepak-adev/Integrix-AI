@@ -137,6 +137,57 @@ export const LOCAL_PRODUCTS = [
     status: 'Active',
     lastUpdated: '2026-10-01',
   },
+  {
+    sku: 'DAB-AML-001',
+    productName: 'Dabur Amla Hair Oil',
+    category: 'Hair Care',
+    colour: 'Natural Dark Green',
+    composition: 'Pure Amla Oil & Natural Antioxidants',
+    fit: '275 ml Bottle',
+    sizeRange: '100ml, 275ml, 450ml',
+    mrpInr: 199,
+    sellingPriceInr: 180,
+    approvedDescription: 'Rich nourishing Ayurvedic amla hair oil clinically proven for up to 10X stronger hair.',
+    approvedClaims: ['10X Stronger Hair', 'Nourishes from roots', 'Natural Amla extract'],
+    claimsNotApproved: ['50X Stronger', '100% Hair Fall Stop', 'Regrows Hair in 7 Days'],
+    careInstructions: 'Store in a cool dry place away from direct sunlight.',
+    status: 'Active',
+    lastUpdated: '2026-11-01',
+  },
+  {
+    sku: 'DAB-GUL-002',
+    productName: 'Dabur Gulabari Moisturiser',
+    category: 'Skin Care',
+    colour: 'Rose Pink',
+    composition: '100% Pure Rose Water & Natural Moisturising Actives',
+    fit: '50g Tub / 400ml Lotion',
+    sizeRange: '50g, 100g, 400ml',
+    mrpInr: 55,
+    sellingPriceInr: 49,
+    approvedDescription: 'Dermatologically tested winter hydration cream with 100% pure rose water for 72-hour moisturisation.',
+    approvedClaims: ['72 Hours* Deep Moisturisation', 'Pure Rose Water', 'Suitable for all skin types'],
+    claimsNotApproved: ['120-Hour Moisturisation', 'Permanent Fairness', 'Instant Wrinkle Eraser'],
+    careInstructions: 'For external use only. Apply twice daily.',
+    status: 'Active',
+    lastUpdated: '2026-11-01',
+  },
+  {
+    sku: 'DAB-ODM-003',
+    productName: 'Odomos Liquid Vaporiser',
+    category: 'Home Care',
+    colour: 'Clear Liquid Refill',
+    composition: 'Transfluthrin 0.88% w/w PMD active repellent',
+    fit: '45 ml Refill (Fits All Machines)',
+    sizeRange: '45ml Single, Twin Pack',
+    mrpInr: 95,
+    sellingPriceInr: 85,
+    approvedDescription: 'Mosquito repellent liquid vaporiser tested for 80% reduction in mosquito presence with family safety.',
+    approvedClaims: ['80% Less Mosquitoes*', 'Safety for the Entire Family', 'Fits All Machines'],
+    claimsNotApproved: ['100% Kills Mosquitoes', 'Zero Bites Guaranteed', 'No Chemicals'],
+    careInstructions: 'Keep out of reach of children. Use in well-ventilated areas.',
+    status: 'Active',
+    lastUpdated: '2026-10-15',
+  },
 ];
 
 export const LOCAL_CAMPAIGNS = [
@@ -336,12 +387,112 @@ export const LOCAL_SCENARIOS: AcceptanceScenario[] = [
   },
 ];
 
+export const DABUR_SCENARIOS: AcceptanceScenario[] = [
+  {
+    id: 'DAB-SCENARIO-1',
+    testPackId: 'INX-DAB-T01',
+    expectedAuditDocId: 'DAB-REAL-001',
+    title: 'Dabur Amla Hair Oil — 10X Stronger (Genuine)',
+    sku: 'DAB-AML-001',
+    channel: 'National Print & Digital Media',
+    testDate: '2026-11-16',
+    filename: 'DAB-REAL-001.jpg',
+    expectedOutcome: 'PASS',
+    primaryRule: 'DAB-RULE-001',
+    severity: 'GREEN',
+    description: 'Official compliant Dabur Amla ad featuring certified 10X stronger hair claim backed by clinical study vs non-conditioning oil with legible footnote.',
+    keyEvidence: 'Dabur Clinical Research Dossier section 4.1 & ASCI Hair Care norms.',
+    suggestedCorrection: 'Complies with all clinical and statutory standards.',
+  },
+  {
+    id: 'DAB-SCENARIO-2',
+    testPackId: 'INX-DAB-T02',
+    expectedAuditDocId: 'DAB-REAL-002',
+    title: 'Dabur Gulabari — 72-Hour Moisturisation (Genuine)',
+    sku: 'DAB-GUL-002',
+    channel: 'Official E-Store & Beauty Portals',
+    testDate: '2026-11-16',
+    filename: 'DAB-REAL-002.png',
+    expectedOutcome: 'PASS',
+    primaryRule: 'DAB-RULE-002',
+    severity: 'GREEN',
+    description: 'Approved skincare creative with certified 72-hour hydration claim and approved pricing.',
+    keyEvidence: 'Gulabari Dermatological Certification Study (controlled conditions).',
+    suggestedCorrection: 'Complies with dermatological claim substantiation.',
+  },
+  {
+    id: 'DAB-SCENARIO-3',
+    testPackId: 'INX-DAB-T03',
+    expectedAuditDocId: 'DAB-REAL-003',
+    title: 'Odomos Liquid Vaporiser — 80% Less Mosquitoes (Genuine)',
+    sku: 'DAB-ODM-003',
+    channel: 'Retail Modern Trade & E-Commerce',
+    testDate: '2026-11-16',
+    filename: 'DAB-REAL-003.jpg',
+    expectedOutcome: 'PASS',
+    primaryRule: 'DAB-RULE-003',
+    severity: 'GREEN',
+    description: 'Approved household repellent creative with accurate 80% reduction statement, family safety copy, and "Fits all machines" label.',
+    keyEvidence: 'Odomos Efficacy Trial & Central Insecticides Board norms.',
+    suggestedCorrection: 'No correction needed. Fully compliant with CIB and ASCI codes.',
+  },
+  {
+    id: 'DAB-SCENARIO-4',
+    testPackId: 'INX-DAB-T04',
+    expectedAuditDocId: 'DAB-FAKE-001',
+    title: 'Dabur Amla Hair Oil — 50X Exaggerated Multiplier (Violation)',
+    sku: 'DAB-AML-001',
+    channel: 'Social Media Feed Advertisement',
+    testDate: '2026-11-16',
+    filename: 'DAB-FAKE-001.png',
+    expectedOutcome: 'FAIL',
+    primaryRule: 'DAB-RULE-001',
+    severity: 'RED',
+    description: 'Exaggerated / unsupported claim: "Makes hair 50X stronger" deviates from certified 10X clinical benchmark.',
+    keyEvidence: 'Dabur Clinical Research Dossier section 4.1 & ASCI Code Section 1.4.',
+    suggestedCorrection: 'Revise copy to "10X Stronger Hair" and ensure scientific test basis footnote is legible.',
+  },
+  {
+    id: 'DAB-SCENARIO-5',
+    testPackId: 'INX-DAB-T05',
+    expectedAuditDocId: 'DAB-FAKE-002',
+    title: 'Dabur Gulabari — 120-Hour Misleading Duration (Violation)',
+    sku: 'DAB-GUL-002',
+    channel: 'Digital Banner & Instagram Ad',
+    testDate: '2026-11-16',
+    filename: 'DAB-FAKE-002.png',
+    expectedOutcome: 'FAIL',
+    primaryRule: 'DAB-RULE-002',
+    severity: 'RED',
+    description: 'Misleading duration claim: "120 Hours\' of Moisturisation" exceeds verified 72-hour clinical certification by 66.7%.',
+    keyEvidence: 'Gulabari Dermatological Efficacy Study & Product Dossier.',
+    suggestedCorrection: 'Change duration claim back to certified standard: "Get 72-Hour Moisturisation".',
+  },
+  {
+    id: 'DAB-SCENARIO-6',
+    testPackId: 'INX-DAB-T06',
+    expectedAuditDocId: 'DAB-FAKE-003',
+    title: 'Odomos — 100% Guaranteed Elimination (Violation)',
+    sku: 'DAB-ODM-003',
+    channel: 'Online Marketplace Banner',
+    testDate: '2026-11-16',
+    filename: 'DAB-FAKE-003.png',
+    expectedOutcome: 'FAIL',
+    primaryRule: 'DAB-RULE-003',
+    severity: 'RED',
+    description: 'False guarantee claim: "100% Kills Mosquitoes All Night" is an unprovable absolute guarantee violating Central Insecticides Board norms.',
+    keyEvidence: 'Central Insecticides Board & ASCI norms prohibiting absolute eradication guarantees for household vaporisers.',
+    suggestedCorrection: 'Replace absolute elimination claim with certified formulation claim: "80% Less Mosquitoes*".',
+  },
+];
+
 export function runClientSideScenarioAudit(scenarioId: string): {
   scenario: AcceptanceScenario;
   result: AuditResult;
   matchesExpected: boolean;
 } {
-  const scenario = LOCAL_SCENARIOS.find(
+  const allScenarios = [...LOCAL_SCENARIOS, ...DABUR_SCENARIOS];
+  const scenario = allScenarios.find(
     s => s.id === scenarioId || s.testPackId === scenarioId || s.expectedAuditDocId === scenarioId
   );
   if (!scenario) throw new Error(`Scenario ${scenarioId} not found`);
@@ -528,6 +679,123 @@ export function runClientSideScenarioAudit(scenarioId: string): {
       suggestedCorrection: 'Replace with the approved dispatch estimate and clearly distinguish dispatch from delivery (e.g.: "Orders are generally handed to the carrier within 1–2 business days; estimated delivery calculated at checkout").',
       confidence: 1.0,
     });
+  } else if (scenario.id === 'DAB-SCENARIO-1') {
+    // Dabur Amla 10X Stronger (Genuine - PASS)
+    findings.push({
+      id: `FIND-DAB-001-${Date.now()}`,
+      ruleId: 'DAB-RULE-001',
+      policyName: 'Clinical Efficacy & Strength Multiplier Verification',
+      status: 'PASS',
+      severity: 'GREEN',
+      observedValue: '10X Stronger Hair',
+      expectedValue: '10X Stronger Hair (clinical trial baseline)',
+      evidenceExcerpt: 'Dabur Amla Hair Oil creative: "10X Stronger Hair" supported by accredited comparative study vs non-conditioning oil.',
+      sourceFilename: '01_Dabur_Ayurvedic_Master_Brand_Guidelines_2026.pdf',
+      sourceLocator: 'Dabur Clinical Research Dossier section 4.1',
+      explanation: 'The advertised 10X stronger hair claim strictly conforms to certified internal lab study benchmarks.',
+      suggestedCorrection: 'Complies with all clinical trial substantiation standards.',
+      confidence: 0.99,
+    });
+    findings.push({
+      id: `FIND-DAB-002-${Date.now()}`,
+      ruleId: 'DAB-RULE-004',
+      policyName: 'Mandatory Scientific Asterisk Disclaimer Footnote',
+      status: 'PASS',
+      severity: 'GREEN',
+      observedValue: '*Based on a study comparing with non-amla / mineral oil based hair oil. With regular use.',
+      expectedValue: 'Legible scientific methodology footnote qualifying the asterisk (*)',
+      evidenceExcerpt: 'Footnote at base: "*Based on a study comparing with non-amla / mineral oil based hair oil. With regular use."',
+      sourceFilename: '02_ASCI_Code_for_Healthcare_and_Personal_Care.pdf',
+      sourceLocator: 'ASCI Code Section 1.4',
+      explanation: 'Footnote is present, readable, and properly qualifies the performance asterisk.',
+      suggestedCorrection: 'Compliant claim qualification.',
+      confidence: 0.98,
+    });
+  } else if (scenario.id === 'DAB-SCENARIO-2') {
+    // Dabur Gulabari 72-Hour (Genuine - PASS)
+    findings.push({
+      id: `FIND-DAB-003-${Date.now()}`,
+      ruleId: 'DAB-RULE-002',
+      policyName: 'Hydration & Moisturisation Duration Limits',
+      status: 'PASS',
+      severity: 'GREEN',
+      observedValue: '72 Hours* Deep Moisturisation',
+      expectedValue: 'Max 72 Hours (dermatologically validated)',
+      evidenceExcerpt: 'Gulabari Moisturiser creative: "72 Hours* Deep Moisturisation" with footnote citing controlled moisturisation study.',
+      sourceFilename: '03_Dabur_Clinical_Research_&_Efficacy_Substantiation.pdf',
+      sourceLocator: 'Gulabari Dermatological Certification Study',
+      explanation: 'Hydration duration is substantiated up to 72 hours under standard dermatological test conditions.',
+      suggestedCorrection: 'Complies with dermatological claim substantiation.',
+      confidence: 0.99,
+    });
+  } else if (scenario.id === 'DAB-SCENARIO-3') {
+    // Odomos 80% Less Mosquitoes (Genuine - PASS)
+    findings.push({
+      id: `FIND-DAB-004-${Date.now()}`,
+      ruleId: 'DAB-RULE-003',
+      policyName: 'Pest Protection & Absolute Elimination Claims',
+      status: 'PASS',
+      severity: 'GREEN',
+      observedValue: '80% Less Mosquitoes* | Safety for the Entire Family',
+      expectedValue: 'Certified percentage reduction claim (no absolute 100% guarantee)',
+      evidenceExcerpt: 'Official Odomos creative states "80% Less Mosquitoes*" with family safety copy and "Fits all machines" label.',
+      sourceFilename: '04_Central_Insecticides_Board_Regulatory_Compliance.pdf',
+      sourceLocator: 'Central Insecticides Board & ASCI Norms',
+      explanation: 'Statutory compliance: claim is framed as verified percentage reduction rather than unapproved absolute eradication.',
+      suggestedCorrection: 'Fully compliant with CIB and ASCI regulatory standards.',
+      confidence: 0.99,
+    });
+  } else if (scenario.id === 'DAB-SCENARIO-4') {
+    // Dabur Amla 50X Exaggerated (Violation - FAIL)
+    findings.push({
+      id: `FIND-DAB-005-${Date.now()}`,
+      ruleId: 'DAB-RULE-001',
+      policyName: 'Clinical Efficacy & Strength Multiplier Verification',
+      status: 'FAIL',
+      severity: 'RED',
+      observedValue: 'Makes hair 50X stronger*',
+      expectedValue: '10X Stronger Hair (clinical trial baseline)',
+      evidenceExcerpt: 'Synthetic fake ad claims: "Makes hair 50X stronger*" which deviates 500% from certified clinical trial standard.',
+      sourceFilename: '01_Dabur_Ayurvedic_Master_Brand_Guidelines_2026.pdf',
+      sourceLocator: 'Dabur Clinical Research Dossier section 4.1',
+      explanation: 'The ad makes an exaggerated 50X hair strength multiplier claim. Accredited clinical trials only substantiate up to 10X stronger hair vs non-conditioning oil.',
+      suggestedCorrection: 'Revise copy to approved "10X Stronger Hair" and ensure scientific test basis footnote is retained.',
+      confidence: 1.0,
+    });
+  } else if (scenario.id === 'DAB-SCENARIO-5') {
+    // Dabur Gulabari 120-Hour Misleading (Violation - FAIL)
+    findings.push({
+      id: `FIND-DAB-006-${Date.now()}`,
+      ruleId: 'DAB-RULE-002',
+      policyName: 'Hydration & Moisturisation Duration Limits',
+      status: 'FAIL',
+      severity: 'RED',
+      observedValue: "120 Hours' of Moisturisation",
+      expectedValue: '72 Hours* Deep Moisturisation (maximum validated)',
+      evidenceExcerpt: 'Synthetic fake ad claims: "120 Hours\' of Moisturisation" (5 full days), exceeding certified clinical hydration limits by 66.7%.',
+      sourceFilename: '03_Dabur_Clinical_Research_&_Efficacy_Substantiation.pdf',
+      sourceLocator: 'Gulabari Dermatological Efficacy Study & Product Dossier',
+      explanation: 'Unsubstantiated consumer deception: dermatological trials only validate 72 hours of moisturisation under controlled conditions. Claiming 120 hours is uncertified.',
+      suggestedCorrection: 'Correct duration claim back to certified benchmark: "72 Hours* Deep Moisturisation".',
+      confidence: 1.0,
+    });
+  } else if (scenario.id === 'DAB-SCENARIO-6') {
+    // Odomos 100% Elimination Guarantee (Violation - FAIL)
+    findings.push({
+      id: `FIND-DAB-007-${Date.now()}`,
+      ruleId: 'DAB-RULE-003',
+      policyName: 'Pest Protection & Absolute Elimination Claims',
+      status: 'FAIL',
+      severity: 'RED',
+      observedValue: '100% KILLS MOSQUITOES ALL NIGHT!',
+      expectedValue: '80% Less Mosquitoes* (Central Insecticides Board maximum approved)',
+      evidenceExcerpt: 'Synthetic fake ad promises: "100% KILLS MOSQUITOES ALL NIGHT! Zero bites guaranteed." Absolute eradication claims are prohibited by CIB.',
+      sourceFilename: '04_Central_Insecticides_Board_Regulatory_Compliance.pdf',
+      sourceLocator: 'Central Insecticides Board & ASCI Norms',
+      explanation: 'Statutory violation: Central Insecticides Board prohibits absolute eradication guarantees (100% kill / zero bites) for household vaporisers.',
+      suggestedCorrection: 'Replace absolute elimination guarantee with certified formulation claim: "80% Less Mosquitoes*".',
+      confidence: 1.0,
+    });
   }
 
   let passCount = 0;
@@ -574,7 +842,7 @@ export function runClientSideScenarioAudit(scenarioId: string): {
         : scenario.id === 'SCENARIO-5'
         ? ['CMP-26-021']
         : [],
-    brandTerms: ['NOVAWEAR'],
+    brandTerms: scenario.id.startsWith('DAB-') ? ['Dabur', 'Amla', 'Gulabari', 'Odomos'] : ['NOVAWEAR'],
     confidence: 0.98,
     rawText:
       scenario.id === 'SCENARIO-1'
@@ -591,7 +859,19 @@ export function runClientSideScenarioAudit(scenarioId: string): {
         ? `NOVAWEAR\nWRINKLE-PROOF. READY FOR ANYTHING.\nA shirt that stays perfectly smooth from morning to night.\n₹1,299\nNOVAWEAR | NW-CS-001`
         : scenario.id === 'SCENARIO-7'
         ? `NOVAWEAR\nORDER TODAY. DELIVERED TOMORROW. GUARANTEED.\nPlace your order now and receive it by tomorrow, wherever you are.\nNOVAWEAR | Delivery promise`
-        : `NOVAWEAR Advertisement Creative — ${scenario.title}`,
+        : scenario.id === 'DAB-SCENARIO-1'
+        ? `Dabur Amla Hair Oil\nHealthy Amla, Stronger Hair.\n10X Stronger Hair\nPure Amla Oil\n*Based on a study comparing with non-amla / mineral oil based hair oil. With regular use.\nwww.dabur.com`
+        : scenario.id === 'DAB-SCENARIO-2'
+        ? `Gulabari MOISTURISER\nSoft, Glowing, Hydrated Skin\n72 Hours* Deep Moisturisation\nPure Rose Water\n*Based on a moisturisation study under controlled conditions.`
+        : scenario.id === 'DAB-SCENARIO-3'
+        ? `ODOMOS Liquid Vaporiser\nFITS ALL MACHINES*\n80% LESS MOSQUITOES*\nSafety for the Entire Family`
+        : scenario.id === 'DAB-SCENARIO-4'
+        ? `Dabur Amla Hair Oil\nStrong, Nourished Hair Makes a Big Difference!\nMakes hair 50X stronger*\n50X Stronger Hair*\nHelps grow longer, thicker hair\n*Based on internal lab study vs. non-conditioning hair.`
+        : scenario.id === 'DAB-SCENARIO-5'
+        ? `Dabur Gulabari Cold Cream & Body Lotion\nThis Winter, Give Your Skin Long-Lasting Hydration for 120 HOURS' OF MOISTURISATION\n120 Hours' Moisturisation\n50g @ ₹49, 400ml @ ₹280\nSYNTHETIC TEST AD`
+        : scenario.id === 'DAB-SCENARIO-6'
+        ? `ODOMOS Liquid Vaporiser\n100% KILLS MOSQUITOES ALL NIGHT!\nKeep Mosquitoes Away, Keep Your Family Safe with Liquid Vaporiser\nSYNTHETIC TEST AD`
+        : `Advertisement Creative — ${scenario.title}`,
     extractionMethod: 'PDF_TEXT',
   };
 
@@ -611,7 +891,7 @@ export function runClientSideScenarioAudit(scenarioId: string): {
     extractedContent,
     findings,
     metadata: {
-      organisation: 'NOVAWEAR',
+      organisation: scenario.id.startsWith('DAB-') ? 'Dabur India Limited' : 'NOVAWEAR',
       publicationChannel: scenario.channel,
       publicationDate: scenario.testDate,
       sku: scenario.sku || undefined,

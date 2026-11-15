@@ -15,22 +15,9 @@ export interface TestItem {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   ORGANISATIONS: EXACTLY 2 (Dabur & NOVAWEAR)
+   ORGANISATIONS: EXACTLY 2 (NOVAWEAR & Dabur - Real Company)
 ───────────────────────────────────────────────────────────── */
 export const DEFAULT_ORGANISATIONS: Organisation[] = [
-  {
-    id: 'org-dabur',
-    name: 'Dabur',
-    legalName: 'Dabur India Limited',
-    slug: 'dabur',
-    industry: 'Ayurvedic Healthcare, Personal Care & FMCG',
-    brandTone: '140+ years of Ayurvedic heritage, pure natural ingredients, clinically validated efficacy',
-    currency: 'INR (₹)',
-    region: 'India & Global',
-    color: '#059669', // Emerald Dabur Green
-    complianceTolerance: 'Strict',
-    isDefault: true,
-  },
   {
     id: 'org-novawear',
     name: 'NOVAWEAR',
@@ -42,7 +29,22 @@ export const DEFAULT_ORGANISATIONS: Organisation[] = [
     region: 'India / South Asia',
     color: '#4F46E5', // Indigo
     complianceTolerance: 'Strict',
+    isDefault: true,
+    logoUrl: '/logos/novawear-logo.svg',
+  },
+  {
+    id: 'org-dabur',
+    name: 'Dabur',
+    legalName: 'Dabur India Limited (Real-World Enterprise FMCG)',
+    slug: 'dabur',
+    industry: 'Real FMCG Enterprise • Ayurvedic Healthcare & Personal Care',
+    brandTone: 'Real company 140+ years Ayurvedic FMCG enterprise (NSE/BSE listed), live ASCI and legal metrology regulatory benchmark',
+    currency: 'INR (₹)',
+    region: 'India & Global',
+    color: '#059669', // Emerald Dabur Green
+    complianceTolerance: 'Strict',
     isDefault: false,
+    logoUrl: '/logos/dabur-logo.png',
   },
 ];
 
@@ -515,22 +517,22 @@ export const NOVAWEAR_TESTS: TestItem[] = [
   },
 ];
 
-// Fallback defaults for backwards compatibility
-export const DEFAULT_RULES: PolicyRuleItem[] = DABUR_RULES;
-export const DEFAULT_PRODUCTS: ProductItem[] = DABUR_PRODUCTS;
+// Fallback defaults for backwards compatibility (NOVAWEAR first)
+export const DEFAULT_RULES: PolicyRuleItem[] = NOVAWEAR_RULES;
+export const DEFAULT_PRODUCTS: ProductItem[] = NOVAWEAR_PRODUCTS;
 
-const ORGS_KEY = 'integrix_organisations_v3';
-const ACTIVE_ORG_KEY = 'integrix_active_org_v3';
-const RULES_PREFIX = 'integrix_rules_v3_';
-const PRODUCTS_PREFIX = 'integrix_products_v3_';
+const ORGS_KEY = 'integrix_organisations_v4';
+const ACTIVE_ORG_KEY = 'integrix_active_org_v4';
+const RULES_PREFIX = 'integrix_rules_v4_';
+const PRODUCTS_PREFIX = 'integrix_products_v4_';
 
 export const getStoredOrganisations = (): Organisation[] => {
   try {
     const raw = localStorage.getItem(ORGS_KEY);
     if (!raw) return DEFAULT_ORGANISATIONS;
     const parsed = JSON.parse(raw);
-    // Ensure only Dabur and NOVAWEAR exist by default
-    if (Array.isArray(parsed) && parsed.length === 2 && parsed.some(o => o.slug === 'dabur')) {
+    // Ensure only NOVAWEAR and Dabur exist and in correct order
+    if (Array.isArray(parsed) && parsed.length === 2 && parsed[0]?.id === 'org-novawear') {
       return parsed;
     }
     return DEFAULT_ORGANISATIONS;
@@ -549,9 +551,9 @@ export const saveStoredOrganisations = (orgs: Organisation[]): void => {
 
 export const getStoredActiveOrgId = (): string => {
   try {
-    return localStorage.getItem(ACTIVE_ORG_KEY) || 'org-dabur';
+    return localStorage.getItem(ACTIVE_ORG_KEY) || 'org-novawear';
   } catch {
-    return 'org-dabur';
+    return 'org-novawear';
   }
 };
 
@@ -607,4 +609,118 @@ export const saveStoredProductsForOrg = (orgId: string, prods: ProductItem[]): v
 
 export const getTestsForOrg = (orgId: string): TestItem[] => {
   return orgId === 'org-novawear' ? NOVAWEAR_TESTS : DABUR_TESTS;
+};
+
+/* ─────────────────────────────────────────────────────────────
+   CAMPAIGNS & SOURCE POLICIES PER ORGANISATION
+───────────────────────────────────────────────────────────── */
+export interface CampaignItem {
+  campaignId: string;
+  sku: string;
+  campaignPriceInr: number;
+  startDate: string;
+  endDate: string;
+  approvalStatus: 'Approved' | 'Pending' | 'Expired';
+  conditions: string;
+}
+
+export interface PolicyDocumentItem {
+  id: string;
+  name: string;
+  status: 'Indexed' | 'Pending' | 'Draft';
+  category?: string;
+  description?: string;
+}
+
+export const DABUR_CAMPAIGNS: CampaignItem[] = [
+  {
+    campaignId: 'CMP-DAB-001',
+    sku: 'DAB-AML-001',
+    campaignPriceInr: 165,
+    startDate: '2026-11-01',
+    endDate: '2026-11-30',
+    approvalStatus: 'Approved',
+    conditions: 'Valid across national GT & MT modern retail and Dabur e-store. Mandatory asterisk footnote required.',
+  },
+  {
+    campaignId: 'CMP-DAB-002',
+    sku: 'DAB-GUL-002',
+    campaignPriceInr: 45,
+    startDate: '2026-11-01',
+    endDate: '2026-12-31',
+    approvalStatus: 'Approved',
+    conditions: 'Winter Radiance Pack discount. Must disclose dermatological study test basis.',
+  },
+  {
+    campaignId: 'CMP-DAB-003',
+    sku: 'DAB-ODM-003',
+    campaignPriceInr: 79,
+    startDate: '2026-10-15',
+    endDate: '2026-11-30',
+    approvalStatus: 'Approved',
+    conditions: 'Applies to 45ml refill pack. Absolute 100% elimination claims prohibited.',
+  },
+  {
+    campaignId: 'CMP-DAB-004',
+    sku: 'DAB-CHY-004',
+    campaignPriceInr: 369,
+    startDate: '2026-11-10',
+    endDate: '2026-12-15',
+    approvalStatus: 'Pending',
+    conditions: 'Pending commercial sign-off from Ayush Legal Directorate.',
+  },
+];
+
+export const DABUR_POLICIES: PolicyDocumentItem[] = [
+  { id: 'SRC-DAB-001', name: '01_Dabur_Ayurvedic_Master_Brand_Guidelines_2026.pdf', status: 'Indexed', category: 'Brand & Heritage', description: 'Tone of voice, Ayurvedic heritage claims, symbol marks, packaging guidelines.' },
+  { id: 'SRC-DAB-002', name: '02_ASCI_Code_for_Healthcare_and_Personal_Care.pdf', status: 'Indexed', category: 'Regulatory Standard', description: 'Mandatory substantiate-before-publish rules and comparative advertising code.' },
+  { id: 'SRC-DAB-003', name: '03_Dabur_Clinical_Research_&_Efficacy_Substantiation.pdf', status: 'Indexed', category: 'Clinical Dossier', description: 'Accredited lab protocols, tensile strength tests (10X vs baseline), dermatological hydration trials.' },
+  { id: 'SRC-DAB-004', name: '04_Central_Insecticides_Board_Regulatory_Compliance.pdf', status: 'Indexed', category: 'Statutory Compliance', description: 'Prohibitions against 100% eradication guarantees, chemical repellent labelling rules.' },
+  { id: 'SRC-DAB-005', name: '05_Legal_Metrology_and_Pricing_Directives.pdf', status: 'Indexed', category: 'Pricing & Disclosures', description: 'MRP, batch numbers, consumer care disclosures, and pack size declarations.' },
+];
+
+export const NOVAWEAR_CAMPAIGNS: CampaignItem[] = [
+  {
+    campaignId: 'CMP-26-018',
+    sku: 'NW-TS-003',
+    campaignPriceInr: 599,
+    startDate: '2026-11-10',
+    endDate: '2026-11-20',
+    approvalStatus: 'Approved',
+    conditions: 'Exclusive to app and web channels; returns accepted within standard 14-day window.',
+  },
+  {
+    campaignId: 'CMP-26-021',
+    sku: 'NW-TR-005',
+    campaignPriceInr: 1399,
+    startDate: '2026-11-15',
+    endDate: '2026-11-25',
+    approvalStatus: 'Pending',
+    conditions: 'Awaiting commercial sign-off; not valid for public advertising.',
+  },
+  {
+    campaignId: 'CMP-26-025',
+    sku: 'NW-OS-006',
+    campaignPriceInr: 1699,
+    startDate: '2026-11-01',
+    endDate: '2026-11-15',
+    approvalStatus: 'Approved',
+    conditions: 'Limited stock tier; terms apply while supplies last.',
+  },
+];
+
+export const NOVAWEAR_POLICIES: PolicyDocumentItem[] = [
+  { id: 'SRC-NW-001', name: '01_Brand_Guidelines.pdf', status: 'Indexed', category: 'Brand Guidelines', description: 'Tone of voice, logo protection zones, approved colour codes (#1A2B4C navy), font hierarchies.' },
+  { id: 'SRC-NW-002', name: '02_Company_Profile.pdf', status: 'Indexed', category: 'Corporate Profile', description: 'Legal entity details, registered trade names, corporate governance, key contacts.' },
+  { id: 'SRC-NW-003', name: '03_Marketing_and_Communication_Policy.pdf', status: 'Indexed', category: 'Marketing Policy', description: 'Claims substantiation standards, prohibited superlatives, social media guidelines, influencer rules.' },
+  { id: 'SRC-NW-004', name: '04_Product_and_Customer_Information_Policy.pdf', status: 'Indexed', category: 'Product Policy', description: 'Fibre composition disclosure rules, country of origin, size charting, care label standards.' },
+  { id: 'SRC-NW-005', name: '05_Pricing_Discounts_and_Offers_Policy.pdf', status: 'Indexed', category: 'Commercial Policy', description: 'Price display rules, markdown approvals, discount validity periods, strike-through price conditions.' },
+];
+
+export const getCampaignsForOrg = (orgId: string): CampaignItem[] => {
+  return orgId === 'org-novawear' ? NOVAWEAR_CAMPAIGNS : DABUR_CAMPAIGNS;
+};
+
+export const getPoliciesForOrg = (orgId: string): PolicyDocumentItem[] => {
+  return orgId === 'org-novawear' ? NOVAWEAR_POLICIES : DABUR_POLICIES;
 };

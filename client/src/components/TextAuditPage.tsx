@@ -13,7 +13,30 @@ import { analyzeText, ApiError } from '../services/api';
 import { AuditResult } from '../types';
 import { AuditResultView } from './AuditResultView';
 
-const PRESET_SAMPLES = [
+const DABUR_SAMPLES = [
+  {
+    label: 'Compliant Ad (Dabur Amla Hair Oil)',
+    text: 'Dabur Amla Hair Oil (DAB-AML-001)\n10X Stronger Hair with Pure Amla extract.\nClinically tested natural nourishment for healthy roots.\n₹180 for 275 ml\n*Based on accredited lab study vs non-conditioning oil.',
+    sku: 'DAB-AML-001',
+  },
+  {
+    label: 'Exaggerated Multiplier Violation (50X Claim)',
+    text: 'Dabur Amla Hair Oil (DAB-AML-001)\nRevolutionary New Ayurvedic Formula!\nMakes hair 50X stronger and stops 100% hair fall in 7 days!\nOnly ₹180\nOrder online now.',
+    sku: 'DAB-AML-001',
+  },
+  {
+    label: 'Misleading Hydration Duration (120-Hour Claim)',
+    text: 'Dabur Gulabari Moisturising Cream (DAB-GUL-002)\n120 Hours of continuous deep hydration!\nEnriched with 100% pure rose water\nPrice: ₹49',
+    sku: 'DAB-GUL-002',
+  },
+  {
+    label: 'Absolute Pest Eradication Violation (100% Kill)',
+    text: 'Odomos Liquid Vaporiser (DAB-ODM-003)\n100% KILLS MOSQUITOES ALL NIGHT!\nZero bites guaranteed for the entire family.\nPrice: ₹85',
+    sku: 'DAB-ODM-003',
+  },
+];
+
+const NOVAWEAR_SAMPLES = [
   {
     label: 'Compliant Ad (Classic Cotton Shirt)',
     text: 'NOVAWEAR\nEveryday, made easy.\nClassic Cotton Shirt (NW-CS-001)\n100% cotton\nRegular fit with a single chest pocket.\n₹1,299\nShop online now.',
@@ -38,13 +61,20 @@ const PRESET_SAMPLES = [
 
 interface TextAuditPageProps {
   organisation?: string;
+  activeOrg?: any;
 }
 
 export const TextAuditPage: React.FC<TextAuditPageProps> = ({
-  organisation = 'NOVAWEAR',
+  organisation: propOrg,
+  activeOrg,
 }) => {
+  const organisation = propOrg || activeOrg?.name || 'Dabur';
+  const isDabur = organisation.toLowerCase().includes('dabur');
+  const presetSamples = isDabur ? DABUR_SAMPLES : NOVAWEAR_SAMPLES;
+  const defaultSku = isDabur ? 'DAB-AML-001' : 'NW-CS-001';
+
   const [text, setText] = useState('');
-  const [sku, setSku] = useState('NW-CS-001');
+  const [sku, setSku] = useState(defaultSku);
   const [submissionId, setSubmissionId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -90,7 +120,7 @@ export const TextAuditPage: React.FC<TextAuditPageProps> = ({
     }
   };
 
-  const handlePresetSelect = (preset: (typeof PRESET_SAMPLES)[0]) => {
+  const handlePresetSelect = (preset: { label: string; text: string; sku: string }) => {
     setText(preset.text);
     if (preset.sku) setSku(preset.sku);
     setErrorMessage(null);
@@ -133,7 +163,7 @@ export const TextAuditPage: React.FC<TextAuditPageProps> = ({
               <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
               Sample Presets:
             </span>
-            {PRESET_SAMPLES.map((preset, idx) => (
+            {presetSamples.map((preset, idx) => (
               <button
                 key={idx}
                 type="button"
