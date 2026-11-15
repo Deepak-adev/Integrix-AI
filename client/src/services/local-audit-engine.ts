@@ -1003,3 +1003,43 @@ export function runAllClientSideScenarios() {
     results,
   };
 }
+
+export function runClientSideTextAudit(text: string, metadata?: any): AuditResult {
+  const normText = text.toLowerCase();
+  const rawSku = (metadata?.sku || '').trim().toUpperCase();
+
+  let scenarioId = 'SCENARIO-1';
+  if (normText.includes('delivered tomorrow') || (normText.includes('guaranteed') && (!rawSku || normText.includes('delivery promise')))) {
+    scenarioId = 'SCENARIO-7';
+  } else if (rawSku === 'NW-CS-002' || normText.includes('nw-cs-002') || normText.includes('oxford')) {
+    scenarioId = 'SCENARIO-3';
+  } else if ((rawSku === 'NW-CS-001' || normText.includes('nw-cs-001')) && (normText.includes('999') || normText.includes('was ₹1,299') || normText.includes('was 1,299'))) {
+    scenarioId = 'SCENARIO-2';
+  } else if (rawSku === 'NW-TS-003' || normText.includes('nw-ts-003') || normText.includes('cmp-26-018')) {
+    scenarioId = 'SCENARIO-4';
+  } else if (rawSku === 'NW-TR-005' || normText.includes('nw-tr-005') || normText.includes('chino') || normText.includes('cmp-26-021')) {
+    scenarioId = 'SCENARIO-5';
+  } else if (normText.includes('wrinkle')) {
+    scenarioId = 'SCENARIO-6';
+  }
+
+  const { result } = runClientSideScenarioAudit(scenarioId);
+  return {
+    ...result,
+    submissionId: metadata?.submissionId || `SUB-TEXT-${Date.now().toString(36).toUpperCase()}`,
+    filename: 'text_audit_submission.txt',
+    extractedContent: {
+      ...result.extractedContent,
+      rawText: text,
+    },
+    metadata: {
+      ...result.metadata,
+      organisation: 'NOVAWEAR',
+      publicationChannel: metadata?.publicationChannel || 'NOVAWEAR website',
+      publicationDate: metadata?.publicationDate || '2026-11-13',
+      sku: rawSku || result.metadata.sku,
+      auditTimestamp: new Date().toISOString(),
+      rulebookVersion: '0.1',
+    },
+  };
+}

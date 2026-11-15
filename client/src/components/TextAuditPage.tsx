@@ -122,7 +122,7 @@ export const TextAuditPage: React.FC<TextAuditPageProps> = ({
 
   const handlePresetSelect = (preset: { label: string; text: string; sku: string }) => {
     setText(preset.text);
-    if (preset.sku) setSku(preset.sku);
+    setSku(preset.sku || '');
     setErrorMessage(null);
   };
 

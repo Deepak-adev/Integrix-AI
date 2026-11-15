@@ -27,7 +27,20 @@ function readSnapshotHash(extractedData: unknown): string | null {
  * - No frontend endpoints are exposed by this service.
  */
 export class AuditPersistenceService {
-  constructor(private readonly prisma: PrismaClient = getPrisma()) {}
+  private _prisma: PrismaClient | null = null;
+
+  constructor(customPrisma?: PrismaClient) {
+    if (customPrisma) {
+      this._prisma = customPrisma;
+    }
+  }
+
+  private get prisma(): PrismaClient {
+    if (!this._prisma) {
+      this._prisma = getPrisma();
+    }
+    return this._prisma;
+  }
 
   private async findExisting(organisationId: string, submissionId: string) {
     return this.prisma.adSubmission.findUnique({

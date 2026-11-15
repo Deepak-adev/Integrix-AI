@@ -18,10 +18,25 @@ import type {
 const DEFAULT_GRACE_PERIOD_MS = 15 * 60 * 1000; // 15 minutes
 
 export class StorageIntegrityService {
+  private _prisma: PrismaClient | null = null;
+  private readonly fileStorage: AuditFileStorage;
+
   constructor(
-    private readonly prisma: PrismaClient = getPrisma(),
-    private readonly fileStorage: AuditFileStorage = auditFileStorage
-  ) {}
+    customPrisma?: PrismaClient,
+    fileStorage: AuditFileStorage = auditFileStorage
+  ) {
+    if (customPrisma) {
+      this._prisma = customPrisma;
+    }
+    this.fileStorage = fileStorage;
+  }
+
+  private get prisma(): PrismaClient {
+    if (!this._prisma) {
+      this._prisma = getPrisma();
+    }
+    return this._prisma;
+  }
 
   /**
    * Helper to compute SHA-256 hash of a file at an absolute path.
