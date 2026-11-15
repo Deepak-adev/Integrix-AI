@@ -77,13 +77,18 @@ import {
   saveStoredOrganisations,
   getStoredActiveOrgId,
   saveStoredActiveOrgId,
-  getStoredRules,
-  saveStoredRules,
-  getStoredProducts,
-  saveStoredProducts,
+  getStoredRulesForOrg,
+  saveStoredRulesForOrg,
+  getStoredProductsForOrg,
+  saveStoredProductsForOrg,
+  getTestsForOrg,
   DEFAULT_ORGANISATIONS,
-  DEFAULT_RULES,
-  DEFAULT_PRODUCTS,
+  DABUR_PRODUCTS,
+  DABUR_RULES,
+  DABUR_TESTS,
+  NOVAWEAR_PRODUCTS,
+  NOVAWEAR_RULES,
+  NOVAWEAR_TESTS,
 } from './services/governanceStorage';
 import {
   OrgModal,
@@ -125,7 +130,7 @@ export type Page =
   | 'approval-centre'
   | 'settings';
 
-const PRODUCTS: Product[] = DEFAULT_PRODUCTS;
+const PRODUCTS: Product[] = DABUR_PRODUCTS;
 const _OLD_PRODUCTS: Product[] = [
   {
     sku: 'NW-CS-001',
@@ -301,7 +306,7 @@ const TESTS: TestItem[] = [
   },
 ];
 
-const RULES = DEFAULT_RULES;
+const RULES = DABUR_RULES;
 const _OLD_RULES = [
   {
     id: 'NW-RULE-001',
@@ -446,8 +451,9 @@ export const App: React.FC = () => {
   // Dynamic Governance State (Multi-tenant Organisations, Editable Rules & Products)
   const [organisations, setOrganisations] = useState<Organisation[]>(getStoredOrganisations);
   const [activeOrgId, setActiveOrgId] = useState<string>(getStoredActiveOrgId);
-  const [products, setProducts] = useState<ProductItem[]>(getStoredProducts);
-  const [rules, setRules] = useState<PolicyRuleItem[]>(getStoredRules);
+  const [products, setProducts] = useState<ProductItem[]>(() => getStoredProductsForOrg(getStoredActiveOrgId()));
+  const [rules, setRules] = useState<PolicyRuleItem[]>(() => getStoredRulesForOrg(getStoredActiveOrgId()));
+  const [tests, setTests] = useState<TestItem[]>(() => getTestsForOrg(getStoredActiveOrgId()));
 
   const activeOrg = organisations.find((o) => o.id === activeOrgId) || organisations[0] || DEFAULT_ORGANISATIONS[0];
 
@@ -469,6 +475,15 @@ export const App: React.FC = () => {
     setActiveOrgId(orgId);
     saveStoredActiveOrgId(orgId);
     setOrgDropdownOpen(false);
+    const orgProducts = getStoredProductsForOrg(orgId);
+    const orgRules = getStoredRulesForOrg(orgId);
+    const orgTests = getTestsForOrg(orgId);
+    setProducts(orgProducts);
+    setRules(orgRules);
+    setTests(orgTests);
+    if (orgProducts.length > 0) {
+      setSku(orgProducts[0].sku);
+    }
     const target = organisations.find((o) => o.id === orgId);
     if (target) showToast(`Switched active organisation to ${target.name}`);
   };
@@ -503,6 +518,9 @@ export const App: React.FC = () => {
       const fallbackId = nextOrgs[0].id;
       setActiveOrgId(fallbackId);
       saveStoredActiveOrgId(fallbackId);
+      setProducts(getStoredProductsForOrg(fallbackId));
+      setRules(getStoredRulesForOrg(fallbackId));
+      setTests(getTestsForOrg(fallbackId));
     }
     showToast(`Deleted organisation: ${target?.name || orgId}`);
   };
@@ -518,14 +536,14 @@ export const App: React.FC = () => {
       showToast(`Added new policy rule: ${rule.id}`);
     }
     setRules(nextRules);
-    saveStoredRules(nextRules);
+    saveStoredRulesForOrg(activeOrgId, nextRules);
     setEditingRule(null);
   };
 
   const handleDeleteRule = (ruleId: string) => {
     const nextRules = rules.filter((r) => r.id !== ruleId);
     setRules(nextRules);
-    saveStoredRules(nextRules);
+    saveStoredRulesForOrg(activeOrgId, nextRules);
     showToast(`Removed rule ${ruleId} from active rulebook`);
   };
 
@@ -534,7 +552,7 @@ export const App: React.FC = () => {
       r.id === ruleId ? { ...r, isActive: !r.isActive } : r
     );
     setRules(nextRules);
-    saveStoredRules(nextRules);
+    saveStoredRulesForOrg(activeOrgId, nextRules);
     const updated = nextRules.find((r) => r.id === ruleId);
     showToast(`Rule ${ruleId} is now ${updated?.isActive !== false ? 'Enforced' : 'Paused'}`);
   };
@@ -550,14 +568,14 @@ export const App: React.FC = () => {
       showToast(`Added new SKU ${prod.sku} to approved catalogue`);
     }
     setProducts(nextProducts);
-    saveStoredProducts(nextProducts);
+    saveStoredProductsForOrg(activeOrgId, nextProducts);
     setEditingProduct(null);
   };
 
   const handleDeleteProduct = (targetSku: string) => {
     const nextProducts = products.filter((p) => p.sku !== targetSku);
     setProducts(nextProducts);
-    saveStoredProducts(nextProducts);
+    saveStoredProductsForOrg(activeOrgId, nextProducts);
     showToast(`Removed SKU ${targetSku} from catalogue`);
   };
 
@@ -863,7 +881,7 @@ export const App: React.FC = () => {
   const NAV_ITEMS = [
     { p: 'home' as Page, label: 'Home', icon: Sparkles },
     { p: 'audit' as Page, label: 'Audit Studio', icon: Zap },
-    { p: 'testpack' as Page, label: 'Demo Posters', icon: FlaskConical, count: 7 },
+    { p: 'testpack' as Page, label: 'Demo Posters', icon: FlaskConical, count: tests.length },
     { p: 'dashboard' as Page, label: 'Dashboard', icon: LayoutDashboard },
     { p: 'catalogue' as Page, label: 'Catalogue', icon: Package },
     { p: 'rules' as Page, label: 'Policy Rules', icon: Shield },
@@ -1005,11 +1023,11 @@ export const App: React.FC = () => {
                         <FlaskConical className="w-4 h-4 text-amber-500" />
                         <div>
                           <div>Demo Posters</div>
-                          <div className="text-[10px] text-slate-400 font-normal">7 Canonical test pack items</div>
+                          <div className="text-[10px] text-slate-400 font-normal">{tests.length} Verified test pack items</div>
                         </div>
                       </div>
                       <span className="mono text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-bold">
-                        7
+                        {tests.length}
                       </span>
                     </button>
                     <div className="border-t border-slate-100 my-1" />
@@ -1625,26 +1643,26 @@ export const App: React.FC = () => {
             </section>
 
             {/* ════════════════════════════════════════════════════════
-                NOVAWEAR CAMPAIGN CREATIVES GALLERY
+                ACTIVE ORGANISATION CAMPAIGN CREATIVES GALLERY
                 ════════════════════════════════════════════════════════ */}
             <section id="evaluator-demo-gallery" className="space-y-6 pt-4 scroll-mt-24">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
                 <div>
                   <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
-                    NOVAWEAR Campaign Creatives
+                    {activeOrg.name} Campaign Creatives ({tests.length})
                   </span>
                   <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight mt-2">
-                    Brand Campaign Advertisements
+                    {activeOrg.name} Brand Campaign Advertisements
                   </h2>
                   <p className="text-xs text-slate-500 mt-1">
-                    Select an active campaign creative to audit against catalogue specifications and brand governance policies.
+                    Select an active campaign creative to audit against {activeOrg.name} specifications and brand governance policies.
                   </p>
                 </div>
               </div>
 
-              {/* 7 Posters Grid */}
+              {/* Verified Posters Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                {TESTS.map((poster) => (
+                {tests.map((poster) => (
                   <div
                     key={poster.id}
                     className="creative-card p-4 flex flex-col justify-between hover:border-indigo-400 hover:shadow-xl transition-all group bg-white"
@@ -2981,10 +2999,10 @@ export const App: React.FC = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h1 className="text-xl font-bold text-slate-900">
-                  Compliance Validation Suite (7 Creatives)
+                  Compliance Validation Suite ({tests.length} Creatives)
                 </h1>
                 <p className="text-xs text-slate-500">
-                  Standardized verification creatives — select any ad to run an instant compliance audit
+                  Standardized verification creatives for {activeOrg.name} — select any ad to run an instant compliance audit
                 </p>
               </div>
               <button
@@ -2992,7 +3010,7 @@ export const App: React.FC = () => {
                 className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition-all cursor-pointer flex items-center gap-2 self-start sm:self-auto"
               >
                 <FlaskConical className="w-4 h-4 text-amber-300" />
-                <span>Execute All 7 Scenarios</span>
+                <span>Execute All {tests.length} Scenarios</span>
               </button>
             </div>
 
@@ -3003,7 +3021,7 @@ export const App: React.FC = () => {
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-              {TESTS.map((t) => (
+              {tests.map((t) => (
                 <div
                   key={t.id}
                   className="creative-card p-4 flex flex-col justify-between hover:border-indigo-300 hover:shadow-lg transition-all"
