@@ -22,11 +22,18 @@ import { AuditResult, Finding, FindingStatus, FindingSeverity } from '../types';
 interface AuditResultViewProps {
   result: AuditResult;
   onNewAudit?: () => void;
+  hideHeader?: boolean;
 }
 
-export const AuditResultView: React.FC<AuditResultViewProps> = ({ result, onNewAudit }) => {
+export const AuditResultView: React.FC<AuditResultViewProps> = ({ result, onNewAudit, hideHeader = false }) => {
   const [filterSeverity, setFilterSeverity] = useState<string>('ALL');
-  const [expandedFindings, setExpandedFindings] = useState<Record<string, boolean>>({});
+  const [expandedFindings, setExpandedFindings] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {};
+    (result?.findings || []).forEach((f) => {
+      init[f.id] = true;
+    });
+    return init;
+  });
 
   const {
     overallStatus,
@@ -157,79 +164,83 @@ export const AuditResultView: React.FC<AuditResultViewProps> = ({ result, onNewA
 
   return (
     <div className="space-y-6">
-      {/* ── Top Result Header Banner ── */}
-      <div className={`rounded-xl border p-5 ${statusBadge.bg} shadow-sm`}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-start gap-4">
-            {statusBadge.icon}
-            <div>
-              <div className="flex flex-wrap items-center gap-2 mb-1">
-                <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wide ${statusBadge.chip}`}>
-                  {overallStatus}
-                </span>
-                <span className="text-base font-bold tracking-tight text-slate-900">
-                  {statusBadge.title}
-                </span>
-                {persisted && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-100 text-indigo-700 border border-indigo-200">
-                    <Database className="w-3 h-3" />
-                    <span>Persisted</span>
-                  </span>
-                )}
-                {idempotentReplay && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-200 text-slate-700">
-                    Idempotent Replay
-                  </span>
-                )}
+      {!hideHeader && (
+        <>
+          {/* ── Top Result Header Banner ── */}
+          <div className={`rounded-xl border p-5 ${statusBadge.bg} shadow-sm`}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-4">
+                {statusBadge.icon}
+                <div>
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wide ${statusBadge.chip}`}>
+                      {overallStatus}
+                    </span>
+                    <span className="text-base font-bold tracking-tight text-slate-900">
+                      {statusBadge.title}
+                    </span>
+                    {persisted && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-100 text-indigo-700 border border-indigo-200">
+                        <Database className="w-3 h-3" />
+                        <span>Persisted</span>
+                      </span>
+                    )}
+                    {idempotentReplay && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-200 text-slate-700">
+                        Idempotent Replay
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-700 leading-relaxed max-w-3xl">
+                    {statusBadge.description}
+                  </p>
+                </div>
               </div>
-              <p className="text-xs text-slate-700 leading-relaxed max-w-3xl">
-                {statusBadge.description}
-              </p>
+
+              {onNewAudit && (
+                <button
+                  onClick={onNewAudit}
+                  className="px-4 py-2 text-xs font-semibold rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 shadow-sm transition-colors shrink-0 whitespace-nowrap self-start sm:self-center"
+                >
+                  Start New Audit
+                </button>
+              )}
             </div>
           </div>
 
-          {onNewAudit && (
-            <button
-              onClick={onNewAudit}
-              className="px-4 py-2 text-xs font-semibold rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 shadow-sm transition-colors shrink-0 self-start sm:self-center"
-            >
-              Start New Audit
-            </button>
-          )}
-        </div>
-      </div>
+          {/* ── Summary Statistics Cards ── */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+            <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm text-center">
+              <div className="text-xs font-semibold text-slate-500">Total Findings</div>
+              <div className="text-2xl font-bold text-slate-900 mt-1">{summary?.total ?? findings.length}</div>
+            </div>
 
-      {/* ── Summary Statistics Cards ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm text-center">
-          <div className="text-xs font-semibold text-slate-500">Total Findings</div>
-          <div className="text-2xl font-bold text-slate-900 mt-1">{summary?.total ?? findings.length}</div>
-        </div>
+            <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm text-center">
+              <div className="text-xs font-semibold text-emerald-700 flex items-center justify-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Passed</span>
+              </div>
+              <div className="text-2xl font-bold text-emerald-700 mt-1">{summary?.pass ?? 0}</div>
+            </div>
 
-        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm text-center">
-          <div className="text-xs font-semibold text-emerald-700 flex items-center justify-center gap-1">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>Passed</span>
+            <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm text-center">
+              <div className="text-xs font-semibold text-rose-700 flex items-center justify-center gap-1">
+                <XCircle className="w-3.5 h-3.5" />
+                <span>Violations</span>
+              </div>
+              <div className="text-2xl font-bold text-rose-700 mt-1">{summary?.fail ?? 0}</div>
+            </div>
+
+            <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm text-center">
+              <div className="text-xs font-semibold text-amber-700 flex items-center justify-center gap-1">
+                <AlertCircle className="w-3.5 h-3.5" />
+                <span>Need Review</span>
+              </div>
+              <div className="text-2xl font-bold text-amber-700 mt-1">{summary?.needsVerification ?? 0}</div>
+            </div>
           </div>
-          <div className="text-2xl font-bold text-emerald-700 mt-1">{summary?.pass ?? 0}</div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm text-center">
-          <div className="text-xs font-semibold text-rose-700 flex items-center justify-center gap-1">
-            <XCircle className="w-3.5 h-3.5" />
-            <span>Violations</span>
-          </div>
-          <div className="text-2xl font-bold text-rose-700 mt-1">{summary?.fail ?? 0}</div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm text-center">
-          <div className="text-xs font-semibold text-amber-700 flex items-center justify-center gap-1">
-            <AlertCircle className="w-3.5 h-3.5" />
-            <span>Need Review</span>
-          </div>
-          <div className="text-2xl font-bold text-amber-700 mt-1">{summary?.needsVerification ?? 0}</div>
-        </div>
-      </div>
+        </>
+      )}
 
       {/* ── Metadata & Engine Banner ── */}
       <div className="bg-slate-50 rounded-xl border border-slate-200 px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600">

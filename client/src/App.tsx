@@ -51,6 +51,9 @@ import {
   Globe,
   Leaf,
   ShoppingBag,
+  ArrowLeft,
+  Scale,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   extractTextFromImage,
@@ -121,6 +124,7 @@ interface TestItem {
 
 export type Page =
   | 'home'
+  | 'governance'
   | 'audit'
   | 'dashboard'
   | 'catalogue'
@@ -447,6 +451,8 @@ export const App: React.FC = () => {
   const [exportOpen, setExportOpen] = useState(false);
   const [runAllStatus, setRunAllStatus] = useState<string | null>(null);
   const [showExpectedOutcome, setShowExpectedOutcome] = useState(false);
+  const [showBenchmarkDetail, setShowBenchmarkDetail] = useState(false);
+  const [leftConsoleTab, setLeftConsoleTab] = useState<'ocr' | 'specs' | 'scenario'>('ocr');
   const [lifecycleStage, setLifecycleStage] = useState<LifecycleStage>(() => {
     try {
       const saved = localStorage.getItem('integrix_lifecycle_stage');
@@ -886,6 +892,8 @@ export const App: React.FC = () => {
     setBackendAuditResult(null);
     setSelectedDemoPoster(null);
     setShowExpectedOutcome(false);
+    setShowBenchmarkDetail(false);
+    setLeftConsoleTab('ocr');
     setProductSelectionOrigin('manual');
     setFileName(null);
     setFileSize(null);
@@ -1067,14 +1075,16 @@ export const App: React.FC = () => {
         }}
       />
 
-      {/* Ambient background glow orbs */}
-      <div className="absolute top-0 left-1/3 w-[500px] h-[500px] bg-indigo-500/5 rounded-full blur-3xl pointer-events-none -z-10 anim-float" />
-      <div className="absolute top-32 right-1/4 w-[400px] h-[400px] bg-violet-500/5 rounded-full blur-3xl pointer-events-none -z-10" />
+      {/* Full-Bleed Purple/Violet Ambient Mesh Backdrop */}
+      <div className="absolute top-0 inset-x-0 h-[920px] bg-gradient-to-b from-purple-200/70 via-violet-100/50 via-indigo-50/40 to-transparent pointer-events-none -z-10" />
+      <div className="absolute top-0 inset-x-0 h-[700px] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-300/40 via-violet-200/30 to-transparent pointer-events-none -z-10" />
+      <div className="absolute top-10 left-1/4 w-[600px] h-[600px] bg-purple-400/20 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="absolute top-20 right-1/4 w-[600px] h-[600px] bg-indigo-400/20 rounded-full blur-3xl pointer-events-none -z-10" />
 
       {/* ════════════════════════════════════════════════════════
           TOP NAVIGATION HEADER (CLEAN RESPONSIVE ARCHITECTURE)
           ════════════════════════════════════════════════════════ */}
-      <header className="sticky top-0 z-40 glass-header transition-all duration-300 border-b border-slate-200/80">
+      <header className="sticky top-0 z-40 glass-header transition-colors duration-200 border-b border-slate-200/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between gap-4">
           {/* LEFT: Integrix AI Logo & Context */}
           <div className="flex items-center gap-3 shrink-0">
@@ -1254,6 +1264,21 @@ export const App: React.FC = () => {
                     <div className="px-3.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-400">
                       Policy & Governance
                     </div>
+                    <button
+                      onClick={() => {
+                        nav('governance');
+                        closeDropdownImmediately();
+                      }}
+                      className={`w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-bold text-left transition-colors cursor-pointer ${
+                        page === 'governance' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                      <div>
+                        <div>Governance Architecture</div>
+                        <div className="text-[10px] text-slate-400 font-normal">End-to-end 4-phase lifecycle</div>
+                      </div>
+                    </button>
                     <button
                       onClick={() => {
                         nav('policy-repository');
@@ -1577,13 +1602,22 @@ export const App: React.FC = () => {
         </>
       ) : (
         /* HOME PAGE HEADER: Demo Check & Creative Visuals CTA */
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2.5 shrink-0">
+          <button
+            onClick={() => nav('governance')}
+            className="hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-slate-200/90 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-xs hover:border-slate-300 transition-all cursor-pointer hover:scale-105 active:scale-95 whitespace-nowrap"
+            title="Open End-to-End Governance Architecture"
+          >
+            <ShieldCheck className="w-4 h-4 text-indigo-600" />
+            <span>Governance Architecture</span>
+          </button>
+
           <button
             onClick={() => {
               setPendingTargetPage('demo-gallery' as any);
               setOrgGateOpen(true);
             }}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-black shadow-md shadow-indigo-500/25 transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-black shadow-md shadow-indigo-500/25 transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95 whitespace-nowrap"
             title="Choose Organisation & View Creative Collection"
           >
             <Sparkles className="w-4 h-4 text-amber-300" />
@@ -1742,84 +1776,354 @@ export const App: React.FC = () => {
         ──────────────────────────────────────────────────────── */}
         {page === 'home' && (
           <div className="space-y-12 py-2">
-            {/* HERO SECTION */}
-            <div className="text-center max-w-4xl mx-auto space-y-6 pt-4 sm:pt-8">
-              <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-slate-900 tracking-tight leading-[1.12]">
-                Automated Advertising Compliance{' '}
-                <span className="bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-700 bg-clip-text text-transparent">
-                  at Enterprise Scale
-                </span>
-              </h1>
+            {/* HERO SECTION WITH FULL-COVERAGE PURPLE AMBIENT SHADE */}
+            <div className="relative rounded-3xl overflow-hidden p-8 sm:p-12 lg:p-14 border border-purple-200/80 bg-gradient-to-b from-purple-100/90 via-violet-50/80 to-purple-50/50 shadow-sm backdrop-blur-md">
+              {/* Full-Coverage Ambient Purple Glows */}
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-300/35 via-violet-200/25 to-transparent pointer-events-none" />
+              <div className="absolute -top-32 -left-32 w-[500px] h-[500px] bg-purple-400/25 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute -top-32 -right-32 w-[500px] h-[500px] bg-indigo-400/25 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute bottom-0 inset-x-0 h-28 bg-gradient-to-t from-purple-100/40 to-transparent pointer-events-none" />
 
-              <p className="text-sm sm:text-base text-slate-500 max-w-2xl mx-auto leading-relaxed">
-                Integrix AI audits advertisements, social banners, and commercial claims against approved
-                catalogue specifications and brand policy — detecting breaches and generating evidence-backed
-                "Do This Instead" solutions in seconds.
-              </p>
+              <div className="relative text-center max-w-4xl mx-auto space-y-6 pt-2 sm:pt-4 z-10">
+                {/* Live Animated Badge */}
+                <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full text-xs font-bold bg-white/95 text-indigo-700 border border-purple-200 shadow-xs backdrop-blur-md">
+                  <span className="flex h-2 w-2 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-600"></span>
+                  </span>
+                  <span>Next-Gen Content Governance & Brand Safety Engine</span>
+                  <span className="hidden sm:inline-block w-1 h-1 rounded-full bg-purple-300" />
+                  <span className="hidden sm:inline-block text-[11px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
+                    v2.4 Active
+                  </span>
+                </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-                <button
-                  onClick={() => handleEnterDashboardWithOrgGate('audit')}
-                  className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-extrabold shadow-lg shadow-indigo-500/25 transition-all cursor-pointer hover:scale-105 active:scale-95 flex items-center gap-2"
-                >
-                  <Zap className="w-4 h-4" />
-                  Launch Audit Studio
-                </button>
+                <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-slate-900 tracking-tight leading-[1.12]">
+                  Automated Advertising Compliance{' '}
+                  <span className="bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-700 bg-clip-text text-transparent">
+                    at Enterprise Scale
+                  </span>
+                </h1>
 
-                <button
-                  onClick={() => handleEnterDashboardWithOrgGate('dashboard')}
-                  className="px-5 py-3.5 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-2xs hover:border-slate-300 transition-all cursor-pointer flex items-center gap-2"
-                >
-                  <LayoutDashboard className="w-4 h-4 text-slate-400" />
-                  View Dashboard
-                </button>
+                <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto leading-relaxed">
+                  Integrix AI audits visual posters, marketing claims, and promotional fine print against catalogue ground-truth and regulatory policies — detecting breaches and generating certified <span className="font-bold text-slate-800">"Do This Instead"</span> copy in seconds.
+                </p>
 
-                <button
-                  onClick={() => handleEnterDashboardWithOrgGate('policy-repository')}
-                  className="px-5 py-3.5 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-2xs hover:border-slate-300 transition-all cursor-pointer flex items-center gap-2"
-                >
-                  <Package className="w-4 h-4 text-slate-400" />
-                  Policy Repository
-                </button>
+                {/* Primary Action Buttons */}
+                <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                  <button
+                    onClick={() => {
+                      setPendingTargetPage('demo-gallery' as any);
+                      setOrgGateOpen(true);
+                    }}
+                    className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-black shadow-lg shadow-indigo-500/25 transition-all cursor-pointer hover:scale-105 active:scale-95 flex items-center gap-2 whitespace-nowrap shrink-0"
+                  >
+                    <Sparkles className="w-4 h-4 text-amber-300" />
+                    <span>Click Here for Demo Check</span>
+                  </button>
+
+                  <button
+                    onClick={() => nav('governance')}
+                    className="px-5 py-3.5 rounded-2xl border border-purple-200/90 bg-white hover:bg-purple-50/70 text-indigo-950 text-xs font-bold shadow-2xs hover:border-purple-300 transition-all cursor-pointer hover:scale-105 active:scale-95 flex items-center gap-2 whitespace-nowrap shrink-0"
+                  >
+                    <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                    <span>Governance Architecture</span>
+                    <ArrowRight className="w-3.5 h-3.5 text-indigo-500" />
+                  </button>
+
+                  <button
+                    onClick={() => handleEnterDashboardWithOrgGate('audit')}
+                    className="px-5 py-3.5 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-2xs hover:border-slate-300 transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap shrink-0"
+                  >
+                    <Zap className="w-4 h-4 text-amber-500" />
+                    <span>Audit Studio</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleEnterDashboardWithOrgGate('dashboard')}
+                    className="px-5 py-3.5 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-2xs hover:border-slate-300 transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap shrink-0"
+                  >
+                    <LayoutDashboard className="w-4 h-4 text-slate-400" />
+                    <span>Dashboard</span>
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* QUICK METRICS TICKER */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-5xl mx-auto pt-2">
+            {/* QUICK METRICS TICKER WITH 3D GLASS CARDS */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto pt-2">
               {[
-                { label: 'Policy Precision', val: '100%', sub: 'Ground-truth catalogue checking' },
-                { label: 'Inference Speed', val: '< 2.0s', sub: 'Real-time OCR & policy reasoning' },
-                { label: 'Product Inventory', val: `${products.length} SKUs`, sub: `${activeOrg.name} certified specifications` },
-                { label: 'Active Rule Engines', val: `${rules.length} Rules`, sub: `${activeOrg.name} deterministic policy rules` },
+                { label: 'Policy Precision', val: '100%', sub: 'Zero-hallucination catalogue verification', tag: 'Deterministic' },
+                { label: 'Inference Speed', val: '< 1.8s', sub: 'Real-time OCR & policy reasoning', tag: 'Instant Audit' },
+                { label: 'Product Inventory', val: `${products.length} SKUs`, sub: `${activeOrg.name} certified specifications`, tag: 'Ground Truth' },
+                { label: 'Deterministic Rules', val: `${rules.length} Rules`, sub: `${activeOrg.name} regulatory guardrails`, tag: 'ASCI & CIB' },
               ].map((m, idx) => (
-                <div key={idx} className="creative-card p-5 text-center space-y-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                <div key={idx} className="creative-card card-3d-hover p-5 text-center space-y-1 relative overflow-hidden group bg-white shadow-xs">
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent group-hover:via-indigo-600 transition-all" />
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
                     {m.label}
                   </span>
-                  <div className="text-2xl font-black text-slate-900 mono">{m.val}</div>
-                  <p className="text-[11px] text-slate-500">{m.sub}</p>
+                  <div className="text-2xl sm:text-3xl font-black text-slate-900 mono tracking-tight">{m.val}</div>
+                  <p className="text-[11px] text-slate-500 font-medium">{m.sub}</p>
+                  <div className="pt-1">
+                    <span className="text-[9px] font-black uppercase text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-2 py-0.5 rounded-full inline-block">
+                      {m.tag}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
 
             {/* ════════════════════════════════════════════════════════
-                COMPLETE BRAND GOVERNANCE LIFECYCLE MANAGER
+                CENTERPIECE 3D INTERACTIVE COMPLIANCE SIMULATION SHOWCASE
                 ════════════════════════════════════════════════════════ */}
-            <section id="governance-lifecycle" className="pt-4 scroll-mt-24">
-              <LifecycleManager
-                currentStage={lifecycleStage}
-                onStageChange={(newStage) => {
-                  setLifecycleStage(newStage);
-                  try {
-                    localStorage.setItem('integrix_lifecycle_stage', newStage);
-                  } catch {}
-                }}
-                onNavigateToAudit={() => {
-                  nav('audit');
-                }}
-              />
-            </section>
+            <div className="max-w-5xl mx-auto pt-4">
+              <div className="relative rounded-3xl p-1 bg-gradient-to-b from-indigo-500/25 via-slate-200/80 to-slate-200/80 shadow-2xl">
+                <div className="bg-white/95 rounded-[22px] overflow-hidden border border-white/80 backdrop-blur-xl">
+                  {/* macOS-style Window Top Bar */}
+                  <div className="flex items-center justify-between px-5 py-3.5 bg-slate-50/90 border-b border-slate-200/80">
+                    <div className="flex items-center gap-2">
+                      <span className="w-3 h-3 rounded-full bg-rose-400 inline-block shadow-2xs" />
+                      <span className="w-3 h-3 rounded-full bg-amber-400 inline-block shadow-2xs" />
+                      <span className="w-3 h-3 rounded-full bg-emerald-400 inline-block shadow-2xs" />
+                      <span className="ml-2 text-xs font-bold text-slate-600 mono flex items-center gap-2">
+                        <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>integrix-compliance-engine // {activeOrg.name}</span>
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        Live Neural Scanner Active
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Showcase Body: Split Screen */}
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 sm:p-8 items-center bg-gradient-to-br from-white via-indigo-50/20 to-slate-50">
+                    {/* Left Column: Simulated Visual Creative Scan with laser beam and badges */}
+                    <div className="lg:col-span-5 relative group">
+                      <div className="relative rounded-2xl overflow-hidden border-2 border-indigo-200/80 bg-slate-900 shadow-lg p-1.5">
+                        <div className="relative rounded-xl overflow-hidden bg-slate-950 aspect-[4/5] flex flex-col justify-between p-5 text-white">
+                          {/* Real Ad Poster Background if available */}
+                          {tests[0]?.image && (
+                            <img
+                              src={tests[0].image}
+                              alt="Ad Under Scan"
+                              className="absolute inset-0 w-full h-full object-contain opacity-40 blur-[0.5px]"
+                            />
+                          )}
+
+                          {/* Laser scan line animation */}
+                          <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_15px_#22d3ee] anim-scan z-20 pointer-events-none" />
+
+                          {/* Top Scan Badges */}
+                          <div className="flex items-center justify-between z-10">
+                            <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 backdrop-blur-md px-2 py-0.5 rounded text-white">
+                              {activeOrgId === 'org-dabur' ? 'Dabur Healthcare' : 'NOVAWEAR Retail'}
+                            </span>
+                            <span className="text-[10px] font-bold bg-amber-500/80 text-white px-2 py-0.5 rounded">
+                              Live Frame Scan
+                            </span>
+                          </div>
+
+                          {/* Bounding box detection overlays */}
+                          <div className="space-y-3 z-10 my-auto">
+                            <div className="p-2.5 rounded-lg border-2 border-dashed border-rose-400/90 bg-rose-500/25 backdrop-blur-sm relative">
+                              <span className="absolute -top-2.5 left-2 bg-rose-600 text-[9px] font-black uppercase px-1.5 py-0.2 rounded text-white shadow-xs">
+                                Breach Detected
+                              </span>
+                              <div className="text-xs font-bold text-white">
+                                {activeOrgId === 'org-dabur' ? '"100% Guaranteed Protection All Night!"' : '"100% Organic Cotton Exclusive"'}
+                              </div>
+                              <div className="text-[10px] text-rose-200">
+                                {activeOrgId === 'org-dabur' ? 'Exceeds CIB limit (80% efficacy ceiling)' : 'Catalogue spec: 60% Cotton / 40% Poly'}
+                              </div>
+                            </div>
+
+                            <div className="p-2.5 rounded-lg border-2 border-dashed border-emerald-400/80 bg-emerald-500/25 backdrop-blur-sm relative">
+                              <span className="absolute -top-2.5 left-2 bg-emerald-600 text-[9px] font-black uppercase px-1.5 py-0.2 rounded text-white shadow-xs">
+                                Verified Fact
+                              </span>
+                              <div className="text-xs font-bold text-white">
+                                {activeOrgId === 'org-dabur' ? 'SKU: Odomos Liquid Vaporiser' : 'SKU: Classic Cotton Shirt'}
+                              </div>
+                              <div className="text-[10px] text-emerald-200">
+                                Ground-truth catalogue match verified
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[11px] text-slate-300 z-10 border-t border-white/20 pt-2 backdrop-blur-sm">
+                            <span>Neural Vision OCR</span>
+                            <span className="mono font-bold text-cyan-300">99.4% Confidence</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Column: Real-Time Diagnostic Feed & Auto-Fix */}
+                    <div className="lg:col-span-7 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-black text-xs shadow-xs">
+                            AI
+                          </div>
+                          <div>
+                            <h3 className="text-sm font-black text-slate-900">Deterministic Compliance Feed</h3>
+                            <p className="text-[11px] text-slate-500">Autonomous rule evaluation vs verified ground-truth</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-xl text-amber-800 text-xs font-black">
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                          <span>1 Actionable Discrepancy</span>
+                        </div>
+                      </div>
+
+                      {/* Diagnostic card */}
+                      <div className="bg-white border border-slate-200/90 rounded-2xl p-4 space-y-3 shadow-xs">
+                        <div className="flex items-center justify-between text-xs pb-2 border-b border-slate-100">
+                          <span className="font-bold text-slate-700">Violation Reference</span>
+                          <span className="mono text-[10px] font-black text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded">
+                            {activeOrgId === 'org-dabur' ? 'RULE: DAB-F-03 (ASCI & CIB)' : 'RULE: NW-FAB-001 (ASCI 2.1)'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-600 leading-relaxed">
+                          {activeOrgId === 'org-dabur'
+                            ? 'The claim "100% Guaranteed Protection All Night" is non-compliant under Central Insecticide Board guidelines. Efficacy claims cannot exceed the certified clinical ceiling of 80%.'
+                            : 'The copy misrepresents fabric composition as "100% Cotton", conflicting with the approved catalogue specification of 60/40 Cotton-Polyester blend.'}
+                        </p>
+
+                        {/* "Do This Instead" Rewriter */}
+                        <div className="bg-emerald-50/70 border border-emerald-200/90 rounded-xl p-3 space-y-1">
+                          <div className="flex items-center gap-1 text-[10px] font-black uppercase text-emerald-800 tracking-wider">
+                            <Sparkles className="w-3 h-3 text-emerald-600" />
+                            <span>Certified "Do This Instead" Copy</span>
+                          </div>
+                          <div className="text-xs font-bold text-emerald-950 font-mono">
+                            {activeOrgId === 'org-dabur'
+                              ? '→ "Keep Family Safe with Clinically Proven 80% Repellent Protection"'
+                              : '→ "Premium Breathable 60/40 Cotton-Rich Everyday Comfort"'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* CTA Buttons inside Showcase */}
+                      <div className="flex flex-wrap items-center gap-3 pt-1">
+                        <button
+                          onClick={() => {
+                            const el = document.getElementById('evaluator-demo-gallery');
+                            if (el) el.scrollIntoView({ behavior: 'smooth' });
+                          }}
+                          className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-xs transition-all flex items-center gap-2 cursor-pointer hover:scale-105 active:scale-95 whitespace-nowrap shrink-0"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                          <span>Try Live Ad Simulation Below</span>
+                        </button>
+                        <button
+                          onClick={() => nav('governance')}
+                          className="px-5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer hover:scale-105 active:scale-95 whitespace-nowrap shrink-0"
+                        >
+                          <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>Inspect Governance Model</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ════════════════════════════════════════════════════════
+                CORE PLATFORM CAPABILITIES (3D DEPTH CARDS)
+                ════════════════════════════════════════════════════════ */}
+            <div className="max-w-5xl mx-auto pt-6 space-y-4">
+              <div className="text-center space-y-1">
+                <span className="text-[11px] font-black uppercase tracking-wider text-indigo-600 bg-indigo-50 border border-indigo-200/80 px-2.5 py-0.5 rounded-md">
+                  Core Platform Capabilities
+                </span>
+                <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                  Deterministic Enforcement at Every Touchpoint
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-500 max-w-xl mx-auto">
+                  Built without LLM hallucinations. Every audit is grounded directly in certified catalogues, regulatory statutes, and signed-off rulebooks.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-3">
+                {[
+                  {
+                    icon: Cpu,
+                    color: 'text-indigo-600 bg-indigo-50 border-indigo-200',
+                    title: 'Multi-Modal Vision OCR',
+                    desc: 'Extracts slogans, product labels, fine print asterisks, and promotional banners with neural OCR.',
+                  },
+                  {
+                    icon: ShieldCheck,
+                    color: 'text-emerald-600 bg-emerald-50 border-emerald-200',
+                    title: 'Catalogue Ground Truth',
+                    desc: 'Verifies claims directly against approved SKUs, price floors, fabric blends, and clinical certifications.',
+                  },
+                  {
+                    icon: Scale,
+                    color: 'text-violet-600 bg-violet-50 border-violet-200',
+                    title: 'ASCI & CIB Compliance',
+                    desc: 'Automates enforcement of advertising statutes, medical disclaimers, and trade honesty norms.',
+                  },
+                  {
+                    icon: Sparkles,
+                    color: 'text-amber-600 bg-amber-50 border-amber-200',
+                    title: 'AI Auto-Fix Rewriter',
+                    desc: 'Produces legally compliant "Do This Instead" copy preserving marketing impact while eliminating liability.',
+                  },
+                ].map((f, i) => {
+                  const Icon = f.icon;
+                  return (
+                    <div key={i} className="creative-card card-3d-hover p-5 space-y-3 bg-white">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${f.color}`}>
+                        <Icon className="w-5 h-5 stroke-[2.2]" />
+                      </div>
+                      <h4 className="text-sm font-black text-slate-900">{f.title}</h4>
+                      <p className="text-xs text-slate-500 leading-relaxed">{f.desc}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ════════════════════════════════════════════════════════
+                GOVERNANCE ARCHITECTURE GATEWAY BANNER
+                ════════════════════════════════════════════════════════ */}
+            <div className="max-w-5xl mx-auto pt-4">
+              <div className="rounded-2xl p-6 sm:p-7 bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-950 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden border border-indigo-800/40">
+                <div className="space-y-2 text-center md:text-left z-10 max-w-xl">
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
+                    <span className="mono text-[10px] font-black uppercase tracking-wider bg-indigo-500/30 text-indigo-200 px-2 py-0.5 rounded border border-indigo-400/30">
+                      Dedicated Pipeline
+                    </span>
+                    <span className="text-[10px] font-bold text-emerald-300 bg-emerald-950/60 border border-emerald-500/40 px-2 py-0.5 rounded-full">
+                      4 Phases • 10 Verification Gates
+                    </span>
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-black text-white tracking-tight">
+                    End-to-End Enterprise Governance Architecture
+                  </h3>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Explore the complete lifecycle: Organisation Onboarding, Rule Synthesis & Policy Repository, Creative Verification, and Executive Administrator Sign-Off.
+                  </p>
+                </div>
+
+                <div className="z-10 shrink-0">
+                  <button
+                    onClick={() => nav('governance')}
+                    className="px-6 py-3.5 rounded-xl bg-white hover:bg-indigo-50 text-indigo-950 text-xs font-black shadow-lg transition-all cursor-pointer hover:scale-105 active:scale-95 flex items-center gap-2 whitespace-nowrap shrink-0"
+                  >
+                    <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                    <span>Open Governance Architecture →</span>
+                  </button>
+                </div>
+              </div>
+            </div>
 
             {/* ════════════════════════════════════════════════════════
                 ACTIVE ORGANISATION CAMPAIGN CREATIVES GALLERY
@@ -1850,7 +2154,7 @@ export const App: React.FC = () => {
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => handleSwitchOrg('org-novawear')}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border whitespace-nowrap shrink-0 ${
                       activeOrgId === 'org-novawear'
                         ? 'bg-indigo-600 text-white border-indigo-700 shadow-sm'
                         : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
@@ -1861,7 +2165,7 @@ export const App: React.FC = () => {
                   </button>
                   <button
                     onClick={() => handleSwitchOrg('org-dabur')}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border whitespace-nowrap shrink-0 ${
                       activeOrgId === 'org-dabur'
                         ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm'
                         : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
@@ -2161,12 +2465,38 @@ export const App: React.FC = () => {
               </div>
               <button
                 onClick={() => nav('testpack')}
-                className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-extrabold transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0 flex items-center gap-2"
+                className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-extrabold transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0 flex items-center gap-2 whitespace-nowrap"
               >
                 <FlaskConical className="w-4 h-4" />
                 <span>Launch Test Suite →</span>
               </button>
             </div>
+          </div>
+        )}
+
+        {/* ────────────────────────────────────────────────────────
+            PAGE: GOVERNANCE ARCHITECTURE LIFECYCLE
+        ──────────────────────────────────────────────────────── */}
+        {page === 'governance' && (
+          <div className="space-y-6">
+            <LifecycleManager
+              currentStage={lifecycleStage}
+              onStageChange={(newStage) => {
+                setLifecycleStage(newStage);
+                try {
+                  localStorage.setItem('integrix_lifecycle_stage', newStage);
+                } catch {}
+              }}
+              onNavigateToAudit={() => {
+                nav('audit');
+              }}
+              onNavigateTo={(targetPage) => {
+                nav(targetPage as any);
+              }}
+              onBackToHome={() => nav('home')}
+              onSwitchOrg={() => setOrgGateOpen(true)}
+              activeOrgName={activeOrg.name}
+            />
           </div>
         )}
 
@@ -2378,504 +2708,645 @@ export const App: React.FC = () => {
             )}
 
             {/* DUAL-PANE AUDIT VIEWPORT */}
-            {(preview || adText) && (
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                {/* LEFT: Visual Creative Inspector (5 cols) */}
-                <div className="lg:col-span-5 space-y-4">
-                  <div className="creative-card overflow-hidden">
-                    <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                      <div className="flex items-center gap-2">
-                        <span className="mono text-xs font-bold text-slate-900 truncate max-w-[200px]">
-                          {fileName || 'Target Creative'}
-                        </span>
-                        {fileSize && (
-                          <span className="mono text-[10px] text-slate-400">({fileSize})</span>
-                        )}
+            {(preview || adText) && (() => {
+              const isBackendFail = backendAuditResult?.overallStatus === 'FAIL';
+              const isBackendPass = backendAuditResult?.overallStatus === 'PASS';
+              const effectiveStatus = backendAuditResult
+                ? backendAuditResult.overallStatus
+                : result?.status || 'PASS';
+
+              const effectiveScore = backendAuditResult
+                ? isBackendPass
+                  ? 100
+                  : isBackendFail
+                  ? Math.max(20, 100 - (backendAuditResult.findings?.filter(f => f.status === 'FAIL').length || 1) * 35)
+                  : 65
+                : result?.complianceScore || 100;
+
+              const effectiveFaultCount = backendAuditResult
+                ? backendAuditResult.findings?.filter(f => f.status === 'FAIL' || f.status === 'NEEDS_VERIFICATION').length || 0
+                : result?.faults.length || 0;
+
+              const effectiveHeadline = backendAuditResult
+                ? isBackendPass
+                  ? 'Fully Compliant Advertisement'
+                  : isBackendFail
+                  ? `${effectiveFaultCount} Policy Violation${effectiveFaultCount !== 1 ? 's' : ''} Detected`
+                  : 'Needs Policy Verification / Clarification'
+                : result?.headlineVerdict || (effectiveStatus === 'PASS' ? 'Fully Compliant Advertisement' : 'Compliance Discrepancies Detected');
+
+              const effectiveSummary = backendAuditResult
+                ? isBackendPass
+                  ? `All advertisement claims, pricing, and specifications match the approved ${activeOrg.name} catalogue.`
+                  : isBackendFail
+                  ? `Critical discrepancies detected against approved ${activeOrg.name} catalogue and policies (${backendAuditResult.findings?.filter(f => f.status === 'FAIL').map(f => f.policyName).join(', ') || 'Catalogue Misalignment'}). Content cannot be published without correction.`
+                  : `Claims lack product-specific substantiation in the repository. Routed to compliance reviewer.`
+                : result?.summary || '';
+
+              return (
+                <div className="space-y-6">
+                  {/* MASTER WORKSPACE HEADER ROW */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 sm:px-5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0 shadow-2xs">
+                        <Zap className="w-4 h-4 stroke-[2.2]" />
                       </div>
-                      {preview && (
-                        <button
-                          onClick={() => setZoomed(true)}
-                          className="p-1.5 rounded-lg hover:bg-slate-200/60 text-slate-500 transition-colors cursor-pointer"
-                          title="Zoom Image"
-                        >
-                          <Maximize2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-
-                    {preview ? (
-                      <div className="p-4 bg-slate-900/5 flex items-center justify-center min-h-[340px] max-h-[440px] overflow-hidden relative">
-                        <img
-                          src={preview}
-                          alt="Creative Preview"
-                          className="max-h-[400px] w-auto object-contain rounded-xl shadow-xs"
-                        />
-                      </div>
-                    ) : (
-                      <div className="p-8 text-center text-xs text-slate-400">Text-only submission</div>
-                    )}
-
-                    {/* Extracted Text Drawer */}
-                    <div className="p-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 bg-white text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="text-slate-700 font-bold">Extracted OCR Copy</span>
-                        {ocrStatus === 'extracting' && (
-                          <span className="inline-flex items-center gap-1 text-[10px] text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
-                            <RefreshCw className="w-2.5 h-2.5 animate-spin" />
-                            Extracting text…
-                          </span>
-                        )}
-                        {ocrStatus === 'completed' && (
-                          <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                            <CheckCircle2 className="w-2.5 h-2.5" />
-                            Extraction completed ({ocrConfidence}% conf)
-                          </span>
-                        )}
-                        {ocrStatus === 'failed' && (
-                          <span className="inline-flex items-center gap-1 text-[10px] text-rose-700 font-bold bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
-                            <AlertCircle className="w-2.5 h-2.5" />
-                            Extraction failed
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {ocrStatus === 'failed' && selectedDemoPoster && (
-                          <button
-                            onClick={() => launchDemoAudit(selectedDemoPoster)}
-                            className="text-xs font-bold text-rose-600 hover:text-rose-800 underline cursor-pointer"
-                          >
-                            Retry
-                          </button>
-                        )}
-                        <button
-                          onClick={() => setShowRaw(!showRaw)}
-                          className="text-indigo-600 font-bold hover:underline flex items-center gap-1 cursor-pointer"
-                        >
-                          {showRaw ? 'Hide Copy' : 'View Extracted Text'}
-                          <ChevronDown
-                            className={`w-3 h-3 transition-transform ${showRaw ? 'rotate-180' : ''}`}
-                          />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Low OCR Confidence Verification Warning */}
-                    {ocrStatus === 'completed' && ocrConfidence > 0 && ocrConfidence < 70 && (
-                      <div className="px-4 py-2 bg-amber-50/80 border-t border-amber-200/60 flex items-center gap-2 text-[11px] text-amber-800">
-                        <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                        <span>
-                          <strong>Verification Advisory:</strong> OCR confidence is moderate ({ocrConfidence}%). Please inspect the extracted claims below.
-                        </span>
-                      </div>
-                    )}
-
-                    {showRaw && (
-                      <div className="p-4 bg-slate-50 border-t border-slate-100">
-                        {ocrStatus === 'failed' ? (
-                          <div className="text-xs text-rose-600 font-semibold p-2 bg-rose-50 rounded-lg border border-rose-200">
-                            {ocrError || 'Unable to extract text from advertisement artwork.'}
-                          </div>
-                        ) : (
-                          <pre className="mono text-[11px] text-slate-700 whitespace-pre-wrap max-h-36 overflow-y-auto leading-relaxed">
-                            {adText || 'No text recognized.'}
-                          </pre>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Scenario details if launched from demo */}
-                  {selectedDemoPoster && (
-                    <div className="creative-card p-4 space-y-3 border-indigo-200 bg-indigo-50/40">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-extrabold text-indigo-950">
-                          Demo Scenario: {selectedDemoPoster.adCode}
-                        </span>
-                        <span className="mono text-[11px] font-bold text-indigo-700 bg-indigo-100/70 px-2 py-0.5 rounded">
-                          {selectedDemoPoster.scenarioId}
-                        </span>
-                      </div>
-                      <p className="text-xs text-indigo-900 leading-relaxed">
-                        {selectedDemoPoster.scenarioDescription}
-                      </p>
-
-                      {/* Expandable Expected Test Outcome for comparison */}
-                      <div className="pt-2 border-t border-indigo-200/60">
-                        <button
-                          onClick={() => setShowExpectedOutcome(!showExpectedOutcome)}
-                          className="w-full flex items-center justify-between text-xs font-bold text-indigo-800 hover:text-indigo-950 transition-colors py-1 cursor-pointer"
-                        >
-                          <span className="flex items-center gap-1.5">
-                            <Eye className="w-3.5 h-3.5 text-indigo-600" />
-                            <span>View Expected Test Outcome (Comparison)</span>
-                          </span>
-                          <ChevronDown
-                            className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                              showExpectedOutcome ? 'rotate-180' : ''
-                            }`}
-                          />
-                        </button>
-
-                        {showExpectedOutcome && (
-                          <div className="mt-2.5 p-3 rounded-xl bg-white border border-indigo-200/80 text-xs space-y-2 animate-fadeIn">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                                Benchmark Target:
-                              </span>
-                              <PillBadge
-                                color={
-                                  selectedDemoPoster.expectedStatus === 'PASS'
-                                    ? 'emerald'
-                                    : selectedDemoPoster.expectedStatus === 'FAIL'
-                                    ? 'rose'
-                                    : 'amber'
-                                }
-                              >
-                                Expected: {selectedDemoPoster.expectedStatus}
-                              </PillBadge>
-                            </div>
-                            <div>
-                              <span className="text-[10px] font-bold text-slate-500 uppercase block mb-0.5">
-                                Expected Outcome Summary:
-                              </span>
-                              <p className="text-slate-800 font-medium leading-relaxed">
-                                {selectedDemoPoster.expectedOutcomeDesc}
-                              </p>
-                            </div>
-                            <div className="pt-1.5 border-t border-slate-100">
-                              <span className="text-[10px] font-bold text-slate-500 uppercase block mb-0.5">
-                                Canonical Violation Issue:
-                              </span>
-                              <p className="text-slate-600 leading-relaxed">
-                                {selectedDemoPoster.expectedIssue}
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* RIGHT: Audit Findings & Fix Recommendations (7 cols) */}
-                <div className="lg:col-span-7 space-y-4">
-                  {/* Overall Compliance Verdict Card */}
-                  {(() => {
-                    // Derive canonical displayed outcome: prefer actual backend audit outcome if present
-                    const isBackendFail = backendAuditResult?.overallStatus === 'FAIL';
-                    const isBackendWarn = backendAuditResult?.overallStatus === 'NEEDS_VERIFICATION';
-                    const isBackendPass = backendAuditResult?.overallStatus === 'PASS';
-                    const effectiveStatus = backendAuditResult
-                      ? backendAuditResult.overallStatus
-                      : result?.status || 'PASS';
-
-                    const effectiveScore = backendAuditResult
-                      ? isBackendPass
-                        ? 100
-                        : isBackendFail
-                        ? Math.max(20, 100 - (backendAuditResult.findings?.filter(f => f.status === 'FAIL').length || 1) * 35)
-                        : 65
-                      : result?.complianceScore || 100;
-
-                    const effectiveFaultCount = backendAuditResult
-                      ? backendAuditResult.findings?.filter(f => f.status === 'FAIL' || f.status === 'NEEDS_VERIFICATION').length || 0
-                      : result?.faults.length || 0;
-
-                    const effectiveHeadline = backendAuditResult
-                      ? isBackendPass
-                        ? 'Fully Compliant Advertisement'
-                        : isBackendFail
-                        ? `${effectiveFaultCount} Policy Violation${effectiveFaultCount !== 1 ? 's' : ''} Detected`
-                        : 'Needs Policy Verification / Clarification'
-                      : result?.headlineVerdict || (effectiveStatus === 'PASS' ? 'Fully Compliant Advertisement' : 'Compliance Discrepancies Detected');
-
-                    const effectiveSummary = backendAuditResult
-                      ? isBackendPass
-                        ? 'All advertisement claims, pricing, and specifications match the approved NOVAWEAR catalogue.'
-                        : isBackendFail
-                        ? `Critical discrepancies detected against approved NOVAWEAR catalogue and policies (${backendAuditResult.findings?.filter(f => f.status === 'FAIL').map(f => f.policyName).join(', ')}). Content cannot be published without correction.`
-                        : 'Claims lack product-specific substantiation in the repository. Routed to compliance reviewer.'
-                      : result?.summary || '';
-
-                    if (!result && !backendAuditResult) return null;
-
-                    return (
-                      <div className="creative-card p-6 flex items-start justify-between gap-5 glow-indigo">
-                        <div className="space-y-2.5">
-                          <div className="flex items-center gap-2">
-                            <PillBadge color={effectiveStatus === 'PASS' ? 'emerald' : effectiveStatus === 'FAIL' ? 'rose' : 'amber'}>
-                              {effectiveStatus === 'PASS' ? (
-                                <>
-                                  <CheckCircle2 className="w-3.5 h-3.5" /> Approved · Ready to Publish
-                                </>
-                              ) : effectiveStatus === 'FAIL' ? (
-                                <>
-                                  <ShieldAlert className="w-3.5 h-3.5" /> {effectiveFaultCount} Fault
-                                  {effectiveFaultCount !== 1 ? 's' : ''} Detected
-                                </>
-                              ) : (
-                                <>
-                                  <AlertCircle className="w-3.5 h-3.5" /> Needs Compliance Verification
-                                </>
-                              )}
-                            </PillBadge>
-                            <span className="mono text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                              Catalogue Verified
-                            </span>
-                          </div>
-                          <h2 className="text-base font-extrabold text-slate-900 leading-snug">
-                            {effectiveHeadline}
-                          </h2>
-                          <p className="text-xs text-slate-500 leading-relaxed">{effectiveSummary}</p>
-                        </div>
-                        <AnimatedScoreRing score={effectiveScore} />
-                      </div>
-                    );
-                  })()}
-
-                  {/* CANONICAL BENCHMARK EVALUATION COMPARISON */}
-                  {selectedDemoPoster && backendAuditResult && (() => {
-                    const canonical = getCanonicalScenario(selectedDemoPoster.scenarioId) || getCanonicalScenario(selectedDemoPoster.adCode);
-                    const expected = canonical ? canonical.expectedOutcome : selectedDemoPoster.expectedStatus;
-                    const actual = backendAuditResult.overallStatus;
-                    const isMatch = actual === expected;
-
-                    return (
-                      <div className={`p-4 rounded-2xl border ${isMatch ? 'bg-emerald-50/70 border-emerald-200' : 'bg-rose-50/70 border-rose-200'} space-y-3`}>
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-black uppercase tracking-wider text-slate-700">
-                              Benchmark Comparison
-                            </span>
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black ${
-                              isMatch ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
-                            }`}>
-                              {isMatch ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                              Test Status: {isMatch ? 'PASS (Accurate)' : 'FAIL (Mismatch)'}
-                            </span>
-                          </div>
-                          <span className="mono text-[10px] text-slate-500 font-semibold">
-                            {canonical?.canonicalTestId || selectedDemoPoster.id} · {canonical?.uiScenarioId || selectedDemoPoster.scenarioId}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-black text-slate-900 tracking-tight">Audit Studio Workspace</span>
+                          <span className="text-slate-300">•</span>
+                          <span className="text-[11px] font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2 py-0.5 rounded-md truncate">
+                            {selectedDemoPoster?.adCode || fileName || 'Live Creative Audit'}
                           </span>
                         </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                          <div className="p-2.5 rounded-xl bg-white/90 border border-slate-200/80">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase block">Expected Benchmark</span>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <PillBadge color={expected === 'PASS' ? 'emerald' : expected === 'FAIL' ? 'rose' : 'amber'}>
-                                {expected}
-                              </PillBadge>
-                              <span className="text-slate-600 text-[11px] truncate font-medium">
-                                {canonical?.expectedViolationCategory || 'Verified Target'}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="p-2.5 rounded-xl bg-white/90 border border-slate-200/80">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase block">Actual Backend Engine</span>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <PillBadge color={actual === 'PASS' ? 'emerald' : actual === 'FAIL' ? 'rose' : 'amber'}>
-                                {actual}
-                              </PillBadge>
-                              <span className="text-slate-600 text-[11px] font-medium">
-                                {backendAuditResult.findings?.length || 0} Rule Finding(s) Generated
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {canonical?.fixtureConflictNote && (
-                          <div className="p-2.5 rounded-xl bg-amber-100/70 border border-amber-300/80 text-[11px] text-amber-900 leading-relaxed flex items-start gap-2">
-                            <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
-                            <div>
-                              <strong>Fixture Alignment Note:</strong> {canonical.fixtureConflictNote}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-
-                  {/* Tool Tabs */}
-                  <div className="flex flex-wrap items-center gap-1.5 p-1.5 bg-slate-100 rounded-2xl w-fit border border-slate-200/60">
-                    {[
-                      ...(backendAuditResult ? [{ id: 'backend', label: `Actual Backend Findings (${backendAuditResult.findings?.length || 0})` }] : []),
-                      { id: 'faults', label: `Faults & Solutions (${result?.faults.length || 0})` },
-                      { id: 'autofix', label: 'AI Auto-Fix Rewriter' },
-                      { id: 'sim', label: 'Live Copy Simulator' },
-                    ].map((t) => (
-                      <button
-                        key={t.id}
-                        onClick={() => setTab(t.id as any)}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                          tab === t.id
-                            ? 'bg-indigo-600 text-white shadow-sm font-extrabold'
-                            : 'text-slate-600 hover:text-slate-950 hover:bg-slate-200/50'
-                        }`}
-                      >
-                        {t.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* TAB: BACKEND FINDINGS (ACTUAL BACKEND-GENERATED AUDIT OUTCOME & FINDINGS) */}
-                  {tab === 'backend' && backendAuditResult && (
-                    <div className="space-y-4">
-                      <AuditResultView result={backendAuditResult} onNewAudit={reset} />
-                    </div>
-                  )}
-
-                  {/* TAB 1: FAULTS & ACTIONABLE RESOLUTIONS */}
-                  {tab === 'faults' && result && (
-                    <div className="space-y-3.5">
-                      {result.faults.length === 0 ? (
-                        <div className="creative-card p-12 text-center space-y-2">
-                          <CheckCircle2 className="w-9 h-9 text-emerald-500 mx-auto" />
-                          <h4 className="text-sm font-extrabold text-slate-900">Zero Compliance Faults</h4>
-                          <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                            This ad conforms 100% with {activeOrg.name} specifications, approved clinical claims, and regulatory standards.
-                          </p>
-                        </div>
-                      ) : (
-                        result.faults.map((f) => (
-                          <div key={f.id} className="creative-card p-5 space-y-3 border-l-4 border-l-rose-500">
-                            <div className="flex items-center justify-between">
-                              <span className="mono text-xs font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded">
-                                {f.category.replace(/_/g, ' ')}
-                              </span>
-                              <span className="text-[11px] text-slate-400 font-mono">{f.sourceReference}</span>
-                            </div>
-
-                            <div>
-                              <h3 className="text-sm font-extrabold text-slate-900">{f.title}</h3>
-                              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                                {f.violationReason}
-                              </p>
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                              <div className="p-3 rounded-xl bg-rose-50/60 border border-rose-100 text-xs">
-                                <span className="text-[10px] font-bold text-rose-600 uppercase block mb-0.5">
-                                  Observed Copy
-                                </span>
-                                <p className="mono font-semibold text-rose-950">{f.observedText || 'N/A'}</p>
-                              </div>
-                              <div className="p-3 rounded-xl bg-emerald-50/60 border border-emerald-100 text-xs">
-                                <span className="text-[10px] font-bold text-emerald-600 uppercase block mb-0.5">
-                                  Approved Standard
-                                </span>
-                                <p className="mono font-semibold text-emerald-950">
-                                  {f.approvedStandard || 'N/A'}
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="p-3.5 rounded-xl bg-indigo-50/80 border border-indigo-100 space-y-1">
-                              <span className="text-[10px] font-extrabold text-indigo-700 uppercase tracking-wider block">
-                                Do This Instead:
-                              </span>
-                              <p className="text-xs font-medium text-indigo-950">{f.doThisInstead}</p>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  )}
-
-                  {/* TAB 2: AI AUTO-FIX REWRITER */}
-                  {tab === 'autofix' && result && (
-                    <div className="creative-card p-6 space-y-4">
-                      <div className="space-y-1">
-                        <h3 className="text-sm font-extrabold text-slate-900">
-                          Pre-Approved Headline & Body Suggestions
-                        </h3>
-                        <p className="text-xs text-slate-500">
-                          AI-generated alternative copy adhering strictly to certified catalogue specifications.
+                        <p className="text-[11px] text-slate-500 truncate">
+                          Multi-modal OCR & deterministic compliance evaluation grounded in {activeOrg.name} catalogue truth
                         </p>
                       </div>
-
-                      <div className="space-y-3 pt-2">
-                        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1.5">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                            Suggested Headline
-                          </span>
-                          <div className="flex items-center justify-between">
-                            <p className="font-bold text-slate-900">
-                              {result.autoFixSuggestions.suggestedHeadline}
-                            </p>
-                            <button
-                              onClick={() => cp(result.autoFixSuggestions.suggestedHeadline, 'hl')}
-                              className="text-xs text-indigo-600 font-bold hover:underline cursor-pointer"
-                            >
-                              {copied === 'hl' ? 'Copied!' : 'Copy'}
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1.5">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                            Suggested Body Copy
-                          </span>
-                          <div className="flex items-start justify-between gap-3">
-                            <p className="text-slate-700 leading-relaxed">
-                              {result.autoFixSuggestions.suggestedBodyCopy}
-                            </p>
-                            <button
-                              onClick={() => cp(result.autoFixSuggestions.suggestedBodyCopy, 'body')}
-                              className="text-xs text-indigo-600 font-bold hover:underline shrink-0 cursor-pointer"
-                            >
-                              {copied === 'body' ? 'Copied!' : 'Copy'}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
                     </div>
-                  )}
 
-                  {/* TAB 3: LIVE COPY SIMULATOR */}
-                  {tab === 'sim' && (
-                    <div className="creative-card p-6 space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="text-sm font-extrabold text-slate-900">Live Copy Simulator</h3>
-                          <p className="text-xs text-slate-500">
-                            Edit ad copy in real-time and re-audit against brand policies
-                          </p>
-                        </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {selectedDemoPoster && (
                         <button
                           onClick={() => {
-                            setAdText(simText);
-                            runAudit(simText, isGeneralCampaign ? null : product);
+                            nav('home');
+                            setTimeout(() => {
+                              const el = document.getElementById('evaluator-demo-gallery');
+                              if (el) el.scrollIntoView({ behavior: 'smooth' });
+                            }, 100);
                           }}
-                          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold shadow-sm transition-colors cursor-pointer"
+                          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-700 transition-all shadow-2xs hover:border-slate-300 cursor-pointer active:scale-95 whitespace-nowrap"
+                        >
+                          <ArrowLeft className="w-3.5 h-3.5 text-slate-500" />
+                          <span>Return to Gallery</span>
+                        </button>
+                      )}
+
+                      {preview && (
+                        <button
+                          onClick={reset}
+                          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-sm shadow-indigo-500/20 cursor-pointer active:scale-95 whitespace-nowrap"
                         >
                           <RefreshCw className="w-3.5 h-3.5" />
-                          <span>Re-Analyze</span>
+                          <span>New Audit</span>
                         </button>
-                      </div>
+                      )}
+                    </div>
+                  </div>
 
-                      <textarea
-                        rows={8}
-                        value={simText}
-                        onChange={(e) => setSimText(e.target.value)}
-                        placeholder="Type or paste revised copy..."
-                        className="w-full p-4 rounded-xl border border-slate-200 bg-slate-50 mono text-xs text-slate-800 focus:outline-none focus:border-indigo-500 leading-relaxed"
-                      />
-                      <div className="flex justify-between text-[11px] text-slate-400 mono">
-                        <span>Words: {simText.trim().split(/\s+/).filter(Boolean).length}</span>
-                        <span>Characters: {simText.length}</span>
+                  {/* DUAL-PANE COCKPIT */}
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                    {/* LEFT COLUMN: Unified Multimodal Creative Console (5 cols) */}
+                    <div className="lg:col-span-5 space-y-4">
+                      <div className="creative-card overflow-hidden bg-white shadow-xs border border-slate-200/90">
+                        {/* Console Header */}
+                        <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                            <span className="mono text-xs font-black text-slate-900 truncate max-w-[220px]">
+                              {selectedDemoPoster?.adCode || fileName || 'Target Creative Visual'}
+                            </span>
+                            {fileSize && (
+                              <span className="mono text-[10px] text-slate-400 bg-white px-1.5 py-0.5 rounded border border-slate-200 shrink-0">
+                                {fileSize}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {preview && (
+                              <button
+                                onClick={() => setZoomed(true)}
+                                className="p-1.5 rounded-lg hover:bg-slate-200/60 text-slate-500 hover:text-indigo-600 transition-colors cursor-pointer"
+                                title="Inspect High-Res Poster Frame"
+                              >
+                                <Maximize2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Image Stage Container */}
+                        {preview ? (
+                          <div className="p-5 bg-gradient-to-b from-slate-900/5 to-slate-900/10 flex items-center justify-center min-h-[350px] max-h-[460px] overflow-hidden relative group">
+                            <img
+                              src={preview}
+                              alt="Creative Preview"
+                              className="max-h-[420px] w-auto object-contain rounded-xl shadow-md transition-transform duration-300 group-hover:scale-[1.01]"
+                            />
+
+                            {/* Floating Violation Advisory Pill on Stage */}
+                            {effectiveStatus === 'FAIL' && (
+                              <div className="absolute top-3 inset-x-3 pointer-events-none">
+                                <div className="mx-auto w-fit px-3 py-1.5 rounded-full bg-rose-950/85 text-rose-200 border border-rose-500/60 text-[11px] font-bold shadow-lg backdrop-blur-md flex items-center gap-2">
+                                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                                  <span>Policy Discrepancy Highlighted</span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="p-8 text-center text-xs text-slate-400">Text-only submission</div>
+                        )}
+
+                        {/* Multimodal Console Segment Tabs */}
+                        <div className="border-t border-slate-100 bg-slate-50/60 p-2">
+                          <div className="grid grid-cols-3 gap-1 p-1 bg-slate-200/60 rounded-xl text-xs">
+                            <button
+                              onClick={() => setLeftConsoleTab('ocr')}
+                              className={`py-1.5 px-2 rounded-lg font-bold transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer ${
+                                leftConsoleTab === 'ocr'
+                                  ? 'bg-white text-indigo-700 shadow-2xs font-extrabold'
+                                  : 'text-slate-600 hover:text-slate-900'
+                              }`}
+                            >
+                              <FileText className="w-3.5 h-3.5" />
+                              <span>OCR Copy</span>
+                            </button>
+                            <button
+                              onClick={() => setLeftConsoleTab('specs')}
+                              className={`py-1.5 px-2 rounded-lg font-bold transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer ${
+                                leftConsoleTab === 'specs'
+                                  ? 'bg-white text-indigo-700 shadow-2xs font-extrabold'
+                                  : 'text-slate-600 hover:text-slate-900'
+                              }`}
+                            >
+                              <Package className="w-3.5 h-3.5" />
+                              <span>Catalogue</span>
+                            </button>
+                            <button
+                              onClick={() => setLeftConsoleTab('scenario')}
+                              className={`py-1.5 px-2 rounded-lg font-bold transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer ${
+                                leftConsoleTab === 'scenario'
+                                  ? 'bg-white text-indigo-700 shadow-2xs font-extrabold'
+                                  : 'text-slate-600 hover:text-slate-900'
+                              }`}
+                            >
+                              <FlaskConical className="w-3.5 h-3.5" />
+                              <span>Scenario</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Console Tab Content Pane */}
+                        <div className="p-4 bg-white border-t border-slate-100 min-h-[160px]">
+                          {/* TAB 1: OCR EXTRACTED TEXT */}
+                          {leftConsoleTab === 'ocr' && (
+                            <div className="space-y-2.5 animate-fadeIn">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="font-bold text-slate-700 flex items-center gap-1.5">
+                                  <span>Neural OCR Text Stream</span>
+                                </span>
+                                {ocrStatus === 'completed' && (
+                                  <span className="mono text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                    {ocrConfidence}% confidence
+                                  </span>
+                                )}
+                                {ocrStatus === 'extracting' && (
+                                  <span className="inline-flex items-center gap-1 text-[10px] text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
+                                    <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                                    Extracting...
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/90 text-xs">
+                                {adText ? (
+                                  <pre className="mono text-[11px] text-slate-800 whitespace-pre-wrap max-h-36 overflow-y-auto leading-relaxed select-all">
+                                    {adText}
+                                  </pre>
+                                ) : (
+                                  <p className="text-slate-400 italic">No copy extracted yet.</p>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* TAB 2: CATALOGUE GROUND-TRUTH SPECS */}
+                          {leftConsoleTab === 'specs' && (
+                            <div className="space-y-2.5 animate-fadeIn text-xs">
+                              <div className="flex items-center justify-between">
+                                <span className="font-bold text-slate-700">Catalogue Truth Master</span>
+                                <span className="mono text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                                  {product?.sku || selectedDemoPoster?.sku || 'General Campaign'}
+                                </span>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Product Item</span>
+                                  <span className="font-bold text-slate-900 truncate block">{product?.name || selectedDemoPoster?.title || 'Brand Asset'}</span>
+                                </div>
+                                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Authorized Price</span>
+                                  <span className="font-bold text-slate-900 mono">{product?.basePrice || 'Promotional Campaign'}</span>
+                                </div>
+                                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Fabric Composition</span>
+                                  <span className="font-bold text-slate-900">{product?.fabric || 'N/A (Brand Campaign)'}</span>
+                                </div>
+                                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Delivery Norm</span>
+                                  <span className="font-bold text-slate-900">3-5 Days SLA (Pan-India)</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* TAB 3: DEMO SCENARIO SPECIFICATION */}
+                          {leftConsoleTab === 'scenario' && (
+                            <div className="space-y-2.5 animate-fadeIn text-xs">
+                              <div className="flex items-center justify-between">
+                                <span className="font-bold text-slate-700">Acceptance Test Scenario</span>
+                                <span className="mono text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                                  {selectedDemoPoster?.scenarioId || 'Custom Upload'}
+                                </span>
+                              </div>
+
+                              <p className="text-slate-600 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                                {selectedDemoPoster?.scenarioDescription || 'Direct user upload creative validation.'}
+                              </p>
+
+                              {selectedDemoPoster && (
+                                <div className="p-2.5 rounded-xl bg-indigo-50/70 border border-indigo-200 text-indigo-950 space-y-1">
+                                  <span className="text-[10px] font-bold uppercase text-indigo-600 block">Benchmark Target:</span>
+                                  <span className="font-semibold block">{selectedDemoPoster.expectedOutcomeDesc}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  )}
+
+                    {/* RIGHT COLUMN: Executive Compliance Command Center (7 cols) */}
+                    <div className="lg:col-span-7 space-y-4">
+                      {/* Overall Compliance Verdict Card */}
+                      <div className="creative-card p-6 sm:p-7 relative overflow-hidden bg-white shadow-xs space-y-4 border border-slate-200/90">
+                        {/* Top Accent Strip */}
+                        <div className={`absolute top-0 left-0 right-0 h-1.5 ${
+                          effectiveStatus === 'PASS'
+                            ? 'bg-gradient-to-r from-emerald-500 to-teal-500'
+                            : effectiveStatus === 'FAIL'
+                            ? 'bg-gradient-to-r from-rose-500 via-rose-600 to-amber-500'
+                            : 'bg-gradient-to-r from-amber-500 to-orange-500'
+                        }`} />
+
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+                          <div className="space-y-2.5 flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black tracking-wide uppercase ${
+                                effectiveStatus === 'PASS'
+                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                  : effectiveStatus === 'FAIL'
+                                  ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                                  : 'bg-amber-100 text-amber-800 border border-amber-300'
+                              }`}>
+                                {effectiveStatus === 'PASS' ? (
+                                  <>
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 stroke-[2.5]" />
+                                    <span>Approved · Ready to Publish</span>
+                                  </>
+                                ) : effectiveStatus === 'FAIL' ? (
+                                  <>
+                                    <ShieldAlert className="w-3.5 h-3.5 text-rose-600 stroke-[2.5]" />
+                                    <span>{effectiveFaultCount} Policy Violation{effectiveFaultCount !== 1 ? 's' : ''} Detected</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <AlertCircle className="w-3.5 h-3.5 text-amber-600 stroke-[2.5]" />
+                                    <span>Needs Compliance Verification</span>
+                                  </>
+                                )}
+                              </span>
+
+                              <span className="mono text-[10px] font-bold text-slate-500 uppercase tracking-wider bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                                Catalogue Verified
+                              </span>
+                            </div>
+
+                            <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight leading-snug">
+                              {effectiveHeadline}
+                            </h2>
+                            <p className="text-xs text-slate-600 leading-relaxed max-w-xl">
+                              {effectiveSummary}
+                            </p>
+
+                            {/* Integrated Quick Status Badges */}
+                            <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 font-semibold">
+                                <span className="text-slate-400">Target:</span>
+                                <span className="font-bold text-slate-900 mono">
+                                  {selectedDemoPoster?.adCode || fileName || 'Creative Submission'}
+                                </span>
+                              </span>
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 font-semibold">
+                                <span className="text-slate-400">Rule Engine:</span>
+                                <span className="font-bold text-indigo-700">Deterministic v2.4</span>
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="shrink-0 flex sm:flex-col items-center justify-center p-3 bg-slate-50/80 rounded-2xl border border-slate-200/80 shadow-2xs">
+                            <AnimatedScoreRing score={effectiveScore} />
+                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 mt-1">
+                              Compliance Index
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* CANONICAL BENCHMARK EVALUATION COMPARISON (COMPACT COLLAPSIBLE) */}
+                      {selectedDemoPoster && backendAuditResult && (() => {
+                        const canonical = getCanonicalScenario(selectedDemoPoster.scenarioId) || getCanonicalScenario(selectedDemoPoster.adCode);
+                        const expected = canonical ? canonical.expectedOutcome : selectedDemoPoster.expectedStatus;
+                        const actual = backendAuditResult.overallStatus;
+                        const isMatch = actual === expected;
+
+                        return (
+                          <div className="creative-card overflow-hidden transition-all bg-white shadow-2xs border border-slate-200">
+                            <button
+                              onClick={() => setShowBenchmarkDetail(!showBenchmarkDetail)}
+                              className="w-full px-4 py-3 flex items-center justify-between text-xs hover:bg-slate-50 transition-colors cursor-pointer"
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                                  isMatch ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-300'
+                                }`}>
+                                  {isMatch ? <CheckCircle2 className="w-3 h-3 text-emerald-600" /> : <XCircle className="w-3 h-3 text-rose-600" />}
+                                  <span>Benchmark Oracle: {isMatch ? 'PASS (100% Accurate)' : 'FAIL (Mismatch)'}</span>
+                                </span>
+                                <span className="mono text-[10px] text-slate-400 hidden sm:inline">
+                                  {canonical?.canonicalTestId || selectedDemoPoster.id} · {canonical?.uiScenarioId || selectedDemoPoster.scenarioId}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1.5 text-indigo-600 font-bold text-[11px]">
+                                <span>{showBenchmarkDetail ? 'Hide Oracle Data' : 'View Oracle Alignment'}</span>
+                                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showBenchmarkDetail ? 'rotate-180' : ''}`} />
+                              </div>
+                            </button>
+
+                            {showBenchmarkDetail && (
+                              <div className="p-4 bg-slate-50/80 border-t border-slate-100 space-y-3 animate-fadeIn text-xs">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  <div className="p-3 rounded-xl bg-white border border-slate-200">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Expected Benchmark</span>
+                                    <div className="flex items-center gap-2">
+                                      <PillBadge color={expected === 'PASS' ? 'emerald' : expected === 'FAIL' ? 'rose' : 'amber'}>
+                                        {expected}
+                                      </PillBadge>
+                                      <span className="text-slate-700 font-medium">{canonical?.expectedViolationCategory || 'Verified Target'}</span>
+                                    </div>
+                                  </div>
+                                  <div className="p-3 rounded-xl bg-white border border-slate-200">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Actual Backend Engine</span>
+                                    <div className="flex items-center gap-2">
+                                      <PillBadge color={actual === 'PASS' ? 'emerald' : actual === 'FAIL' ? 'rose' : 'amber'}>
+                                        {actual}
+                                      </PillBadge>
+                                      <span className="text-slate-700 font-medium">{backendAuditResult.findings?.length || 0} Rule Finding(s) Generated</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                {canonical?.fixtureConflictNote && (
+                                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] leading-relaxed flex items-start gap-2">
+                                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                                    <div>
+                                      <strong>Fixture Alignment Note:</strong> {canonical.fixtureConflictNote}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+
+                      {/* Clean Segmented Navigation Tabs */}
+                      <div className="flex flex-wrap items-center gap-1.5 p-1.5 bg-slate-100 rounded-2xl w-fit border border-slate-200/60 shadow-inner">
+                        {[
+                          {
+                            id: backendAuditResult ? 'backend' : 'faults',
+                            label: `Compliance Findings (${backendAuditResult ? (backendAuditResult.findings?.length || 0) : (result?.faults.length || 0)})`,
+                            icon: ShieldAlert,
+                          },
+                          { id: 'autofix', label: 'AI Auto-Fix Rewriter', icon: Sparkles },
+                          { id: 'sim', label: 'Live Copy Simulator', icon: Zap },
+                        ].map((t) => {
+                          const Icon = t.icon;
+                          const isActive = (t.id === 'backend' && (tab === 'backend' || tab === 'faults')) || tab === t.id;
+                          return (
+                            <button
+                              key={t.id}
+                              onClick={() => setTab(t.id as any)}
+                              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                                isActive
+                                  ? 'bg-indigo-600 text-white shadow-sm font-extrabold'
+                                  : 'text-slate-600 hover:text-slate-950 hover:bg-slate-200/50'
+                              }`}
+                            >
+                              <Icon className="w-3.5 h-3.5" />
+                              <span>{t.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* TAB 1: COMPLIANCE FINDINGS (CLEAN, NO DUPLICATE BANNERS) */}
+                      {(tab === 'backend' || tab === 'faults') && (
+                        <div className="space-y-4">
+                          {backendAuditResult ? (
+                            <AuditResultView result={backendAuditResult} hideHeader={true} onNewAudit={reset} />
+                          ) : result ? (
+                            /* Fallback Faults List */
+                            <div className="space-y-3.5">
+                              {result.faults.length === 0 ? (
+                                <div className="creative-card p-12 text-center space-y-2">
+                                  <CheckCircle2 className="w-9 h-9 text-emerald-500 mx-auto" />
+                                  <h4 className="text-sm font-extrabold text-slate-900">Zero Compliance Faults</h4>
+                                  <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                                    This ad conforms 100% with {activeOrg.name} specifications, approved clinical claims, and regulatory standards.
+                                  </p>
+                                </div>
+                              ) : (
+                                result.faults.map((f) => (
+                                  <div key={f.id} className="creative-card p-5 space-y-3 border-l-4 border-l-rose-500">
+                                    <div className="flex items-center justify-between">
+                                      <span className="mono text-xs font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded">
+                                        {f.category.replace(/_/g, ' ')}
+                                      </span>
+                                      <span className="text-[11px] text-slate-400 font-mono">{f.sourceReference}</span>
+                                    </div>
+
+                                    <div>
+                                      <h3 className="text-sm font-extrabold text-slate-900">{f.title}</h3>
+                                      <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                                        {f.violationReason}
+                                      </p>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                                      <div className="p-3 rounded-xl bg-rose-50/60 border border-rose-100 text-xs">
+                                        <span className="text-[10px] font-bold text-rose-600 uppercase block mb-0.5">
+                                          Observed Copy
+                                        </span>
+                                        <p className="mono font-semibold text-rose-950">{f.observedText || 'N/A'}</p>
+                                      </div>
+                                      <div className="p-3 rounded-xl bg-emerald-50/60 border border-emerald-100 text-xs">
+                                        <span className="text-[10px] font-bold text-emerald-600 uppercase block mb-0.5">
+                                          Approved Standard
+                                        </span>
+                                        <p className="mono font-semibold text-emerald-950">
+                                          {f.approvedStandard || 'N/A'}
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    <div className="p-3.5 rounded-xl bg-indigo-50/80 border border-indigo-100 space-y-1">
+                                      <span className="text-[10px] font-extrabold text-indigo-700 uppercase tracking-wider block">
+                                        Do This Instead:
+                                      </span>
+                                      <p className="text-xs font-medium text-indigo-950">{f.doThisInstead}</p>
+                                    </div>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          ) : null}
+                        </div>
+                      )}
+
+                      {/* TAB 2: AI AUTO-FIX REWRITER */}
+                      {tab === 'autofix' && result && (
+                        <div className="creative-card p-6 space-y-4">
+                          <div className="space-y-1">
+                            <h3 className="text-sm font-extrabold text-slate-900">
+                              Pre-Approved Headline & Body Suggestions
+                            </h3>
+                            <p className="text-xs text-slate-500">
+                              AI-generated alternative copy adhering strictly to certified catalogue specifications.
+                            </p>
+                          </div>
+
+                          <div className="space-y-3 pt-2">
+                            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1.5">
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                                Suggested Headline
+                              </span>
+                              <div className="flex items-center justify-between">
+                                <p className="font-bold text-slate-900">
+                                  {result.autoFixSuggestions.suggestedHeadline}
+                                </p>
+                                <button
+                                  onClick={() => cp(result.autoFixSuggestions.suggestedHeadline, 'hl')}
+                                  className="text-xs text-indigo-600 font-bold hover:underline cursor-pointer"
+                                >
+                                  {copied === 'hl' ? 'Copied!' : 'Copy'}
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1.5">
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                                Suggested Body Copy
+                              </span>
+                              <div className="flex items-start justify-between gap-3">
+                                <p className="text-slate-700 leading-relaxed">
+                                  {result.autoFixSuggestions.suggestedBodyCopy}
+                                </p>
+                                <button
+                                  onClick={() => cp(result.autoFixSuggestions.suggestedBodyCopy, 'body')}
+                                  className="text-xs text-indigo-600 font-bold hover:underline shrink-0 cursor-pointer"
+                                >
+                                  {copied === 'body' ? 'Copied!' : 'Copy'}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* TAB 3: LIVE COPY SIMULATOR */}
+                      {tab === 'sim' && (
+                        <div className="creative-card p-6 space-y-4">
+                          <div className="space-y-1">
+                            <h3 className="text-sm font-extrabold text-slate-900">Live Ad Copy Simulator</h3>
+                            <p className="text-xs text-slate-500">
+                              Edit extracted copy in real-time to simulate how rule enforcement resolves discrepancies.
+                            </p>
+                          </div>
+
+                          <div className="space-y-3">
+                            <textarea
+                              rows={5}
+                              value={simText}
+                              onChange={(e) => setSimText(e.target.value)}
+                              className="w-full p-3.5 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-xs font-mono leading-relaxed outline-none"
+                              placeholder="Type or modify advertisement copy to re-evaluate..."
+                            />
+
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <button
+                                onClick={() => {
+                                  if (result?.autoFixSuggestions.suggestedHeadline) {
+                                    setSimText(
+                                      `${result.autoFixSuggestions.suggestedHeadline}\n\n${result.autoFixSuggestions.suggestedBodyCopy}`
+                                    );
+                                  }
+                                }}
+                                className="text-xs text-indigo-600 font-bold hover:underline cursor-pointer"
+                              >
+                                ← Insert Certified "Do This Instead" Copy
+                              </button>
+
+                              <button
+                                onClick={() => {
+                                  auditSeqRef.current++;
+                                  const currentSeq = auditSeqRef.current;
+                                  runAudit(simText, product, currentSeq);
+                                }}
+                                className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-500/20 transition-all cursor-pointer"
+                              >
+                                Re-Evaluate Copy
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* BOTTOM EXECUTIVE ACTION BAR */}
+                  <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4 border border-indigo-900/50">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-white shrink-0">
+                        <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-black text-white">Authoritative Enterprise Compliance Audit</div>
+                        <p className="text-[11px] text-slate-300">
+                          Ready to certify compliance findings, publish audit certificate, or open the 4-phase governance pipeline.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      <button
+                        onClick={() => nav('governance')}
+                        className="px-4 py-2 rounded-xl bg-white hover:bg-indigo-50 text-indigo-950 text-xs font-black shadow-md transition-all cursor-pointer hover:scale-105 active:scale-95 flex items-center gap-1.5 whitespace-nowrap"
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Open Governance Lifecycle →</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
+            {/* END DUAL-PANE AUDIT VIEWPORT */}
           </div>
         )}
 
-        {/* ────────────────────────────────────────────────────────
+{/* ────────────────────────────────────────────────────────
             PAGE 2: DASHBOARD (ORIGINAL ANALYTICS & QUICK ACTIONS)
         ──────────────────────────────────────────────────────── */}
         {page === 'dashboard' && (

@@ -132,6 +132,9 @@ interface LifecycleManagerProps {
   onNavigateToAudit?: () => void;
   /** Navigate to any named app page */
   onNavigateTo?: (page: string) => void;
+  onBackToHome?: () => void;
+  onSwitchOrg?: () => void;
+  activeOrgName?: string;
 }
 
 export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
@@ -140,6 +143,9 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
   onAuditScenarioSelect,
   onNavigateToAudit,
   onNavigateTo,
+  onBackToHome,
+  onSwitchOrg,
+  activeOrgName,
 }) => {
   // ─────────────────────────────────────────────────────────────
   // 1. STATE INITIALIZATION & LOCALSTORAGE PERSISTENCE
@@ -612,7 +618,7 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
       number: 'PHASE 01',
       title: 'ORGANISATION SETUP',
       firstStage: 'org' as LifecycleStage,
-      description: 'Configure corporate identity, active industry sector boundaries, and ingest compliance source documents.',
+      description: 'Corporate profile, sector guardrails, and compliance source documents.',
       stages: [
         { id: 'org' as LifecycleStage, number: 1, name: 'Organisation Onboarding', short: 'Org Setup', desc: 'Configure brand profile, commercial scope and parameters.' },
         { id: 'sector' as LifecycleStage, number: 2, name: 'Sector Selection', short: 'Sector', desc: 'Select regulated sector guardrails (Retail & Fashion active).' },
@@ -625,7 +631,7 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
       number: 'PHASE 02',
       title: 'POLICY GOVERNANCE',
       firstStage: 'extraction' as LifecycleStage,
-      description: 'Synthesise deterministic rules from documents, review policy drafts, approve rulebooks and publish repositories.',
+      description: 'Rule synthesis, policy drafts review, and certified rulebooks.',
       stages: [
         { id: 'extraction' as LifecycleStage, number: 4, name: 'AI Document Extraction', short: 'Extraction', desc: 'Extract operational facts and policy clauses from documents.' },
         { id: 'review' as LifecycleStage, number: 5, name: 'Policy Draft & Review', short: 'Draft Review', desc: 'Examine synthesised rule conditions, severity levels, and citations.' },
@@ -639,7 +645,7 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
       number: 'PHASE 03',
       title: 'CONTENT VERIFICATION',
       firstStage: 'audit' as LifecycleStage,
-      description: 'Audit creative posters and marketing claims against catalogue facts and active policies in real time.',
+      description: 'Multi-modal visual OCR audit, claim checking, and violation analysis.',
       stages: [
         { id: 'audit' as LifecycleStage, number: 8, name: 'Creative Audit Studio', short: 'Audit Studio', desc: 'Run multi-modal OCR extraction and automated policy evaluation.' },
         { id: 'report' as LifecycleStage, number: 9, name: 'Violation Report', short: 'Violation Report', desc: 'Inspect breach severity, verbatim evidence excerpts, and remediation.' },
@@ -651,7 +657,7 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
       number: 'PHASE 04',
       title: 'FINAL DECISION',
       firstStage: 'decision' as LifecycleStage,
-      description: 'Record authoritative administrator decisions, publish sign-offs, or issue structured rejection notifications.',
+      description: 'Authoritative administrator sign-offs, exceptions, and audit logs.',
       stages: [
         { id: 'decision' as LifecycleStage, number: 10, name: 'Administrator Decision', short: 'Decision', desc: 'Sign off, reject, or request revisions with immutable audit log entries.' },
       ],
@@ -752,231 +758,283 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
     { id: 'AD-NW-007', title: 'Summer T-Shirt', sku: 'NW-ST-005', price: '₹599', outcome: 'FAIL', issue: 'Unapproved delivery guarantee claim' },
   ];
 
+  // Phase icons mapping for modern pipeline cards
+  const phaseIcons = [Building2, Scale, Zap, ShieldCheck];
+  const orgDisplayName = activeOrgName
+    ? activeOrgName.replace(/Private Limited|Limited|Retail/gi, '').trim()
+    : org?.name
+    ? org.name.replace(/Private Limited|Limited|Retail/gi, '').trim()
+    : 'NOVAWEAR';
+
   return (
     <div className="w-full mb-12 space-y-6">
       {/* ─────────────────────────────────────────────────────────────
-          SECTION 0: HEADER & COMPACT PROGRESS SUMMARY
+          SECTION 0: ARCHITECTURE COMMAND CENTER & 4-PHASE PIPELINE
           ───────────────────────────────────────────────────────────── */}
-      <div className="bg-white border border-slate-200/90 rounded-2xl shadow-xs p-5 sm:p-6 space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="bg-white border border-slate-200/90 rounded-2xl shadow-xs p-5 sm:p-6 space-y-5">
+        {/* Top Control Bar: Back Navigation, Brand Badges & Quick Action Controls */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+          <div className="flex flex-wrap items-center gap-2.5">
+            {onBackToHome && (
+              <button
+                onClick={onBackToHome}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-2xs transition-all cursor-pointer hover:scale-105 active:scale-95"
+                title="Return to Home Landing Page"
+              >
+                <ArrowLeft className="w-3.5 h-3.5 text-slate-500" />
+                <span>Back to Home</span>
+              </button>
+            )}
+            <span className="text-[11px] font-black uppercase tracking-wider text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2.5 py-1 rounded-lg">
+              Brand Governance Lifecycle
+            </span>
+            <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 flex items-center gap-1.5 shadow-2xs">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+              <span>{orgDisplayName} Live Workspace</span>
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {onSwitchOrg && (
+              <button
+                onClick={onSwitchOrg}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-2xs hover:border-slate-300 transition-all cursor-pointer active:scale-95"
+              >
+                <Building2 className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Switch Organisation</span>
+              </button>
+            )}
+            {onNavigateToAudit && (
+              <button
+                onClick={onNavigateToAudit}
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-bold shadow-sm shadow-indigo-500/20 transition-all cursor-pointer hover:scale-105 active:scale-95"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                <span>Launch Audit Studio</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Header Title & Executive Radial HUD Gauge */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 pb-5 border-b border-slate-100">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-black uppercase tracking-wider text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-md">
-                Brand Governance Lifecycle
-              </span>
-              <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                NOVAWEAR Live Working Model
-              </span>
-            </div>
-            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mt-1.5">
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
               End-to-End Governance Architecture
             </h2>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1">
-              Interactive 4-phase governance workflow. Click any phase card or stage to navigate directly without scrolling.
+            <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-2xl leading-relaxed">
+              Deterministic 4-phase compliance pipeline enforcing automated policy validation, catalogue truth checks, and audit sign-offs across 10 verification gates.
             </p>
           </div>
 
-          {/* Compact Overall Completion Pill */}
-          <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 sm:px-4 sm:py-3 flex flex-col gap-1.5 min-w-[240px]">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-slate-700">Overall Lifecycle Progress</span>
-              <span className="mono font-black text-indigo-700">{overallProgressPct}%</span>
+          {/* Executive Circular Radial Progress Widget */}
+          <div className="bg-slate-50/90 border border-slate-200/90 rounded-2xl p-3.5 sm:px-4 sm:py-3.5 flex items-center gap-4 min-w-[280px] shadow-xs shrink-0">
+            <div className="relative w-14 h-14 shrink-0 flex items-center justify-center">
+              <svg className="w-14 h-14 -rotate-90" viewBox="0 0 56 56">
+                <circle cx="28" cy="28" r="22" className="stroke-slate-200" strokeWidth="4.5" fill="none" />
+                <circle
+                  cx="28"
+                  cy="28"
+                  r="22"
+                  className="stroke-indigo-600 transition-all duration-700"
+                  strokeWidth="4.5"
+                  strokeDasharray={138.23}
+                  strokeDashoffset={138.23 - (138.23 * overallProgressPct) / 100}
+                  strokeLinecap="round"
+                  fill="none"
+                />
+              </svg>
+              <span className="absolute font-black text-sm text-slate-900 mono">{overallProgressPct}%</span>
             </div>
-            <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-indigo-600 to-emerald-500 transition-all duration-300"
-                style={{ width: `${overallProgressPct}%` }}
-              />
-            </div>
-            <div className="flex items-center justify-between text-[11px] text-slate-500">
-              <span>{totalCompletedStages} of {totalStagesCount} Stages Completed</span>
-              <span className="font-semibold text-slate-700">{activePhase.number} Active</span>
+            <div className="space-y-0.5 min-w-0">
+              <div className="text-xs font-black text-slate-900 tracking-tight">Lifecycle Progress</div>
+              <div className="text-[11px] text-slate-500 font-medium">
+                {totalCompletedStages} of {totalStagesCount} Gates Verified
+              </div>
+              <div className="inline-flex items-center gap-1.5 text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200/80 mt-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse" />
+                <span>{activePhase.number}: {activePhase.title}</span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Phase Breakdown Summary Strip */}
-        <div className="pt-3 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-          {phases.map((p, idx) => {
-            const m = getPhaseMetrics(idx);
-            const isCurrent = safeActivePhaseIndex === idx;
-            return (
-              <div
-                key={p.id}
-                onClick={() => onStageChange(p.firstStage)}
-                className={`px-3 py-2 rounded-xl border text-left cursor-pointer transition-all ${
-                  isCurrent
-                    ? 'bg-indigo-50/70 border-indigo-300 ring-1 ring-indigo-200 text-indigo-950 font-semibold'
-                    : m.isCompleted
-                    ? 'bg-emerald-50/50 border-emerald-200/80 hover:bg-emerald-50 text-emerald-950'
-                    : 'bg-slate-50/80 border-slate-200 hover:bg-slate-100/70 text-slate-700'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="mono text-[10px] font-bold text-slate-500 uppercase">{p.number}</span>
-                  {m.isCompleted ? (
-                    <CheckCircle className="w-3.5 h-3.5 text-emerald-600 stroke-[2.5]" />
-                  ) : isCurrent ? (
-                    <CircleDot className="w-3.5 h-3.5 text-indigo-600" />
-                  ) : (
-                    <span className="text-[10px] text-slate-400">{m.completedStages}/{m.totalStages}</span>
-                  )}
-                </div>
-                <div className="text-xs font-bold truncate mt-0.5">{p.title}</div>
-                <div className="text-[11px] text-slate-500 mt-0.5">
-                  {p.stages.length} stages • {m.completedStages}/{m.totalStages} done
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+        {/* ─────────────────────────────────────────────────────────────
+            THE 4-PHASE GOVERNANCE PIPELINE (Connected & Interactive)
+            ───────────────────────────────────────────────────────────── */}
+        <div>
+          <div className="flex items-center justify-between text-xs text-slate-500 mb-3 px-1">
+            <span className="font-bold text-slate-700 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+              <span>Governance Lifecycle Phases</span>
+              <span className="text-slate-400 font-normal">• Click any phase to switch workflow</span>
+            </span>
+            <span className="hidden sm:inline text-[11px] text-slate-400 font-medium">
+              Stage {currentStageObj.number} of 10 currently active
+            </span>
+          </div>
 
-      {/* ─────────────────────────────────────────────────────────────
-          SECTION 1 & 2: FOUR PERSISTENT PHASE CARDS (Always Visible)
-          ───────────────────────────────────────────────────────────── */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between text-xs text-slate-500 px-1">
-          <span className="font-bold text-slate-700 uppercase tracking-wider text-[11px]">
-            Governance Lifecycle Phases (Click to Navigate)
-          </span>
-          <span>Click any phase to open its initial stage</span>
-        </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            {phases.map((phase, pIdx) => {
+              const m = getPhaseMetrics(pIdx);
+              const isPhaseActive = safeActivePhaseIndex === pIdx;
+              const IconComponent = phaseIcons[pIdx] || ShieldCheck;
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-          {phases.map((phase, pIdx) => {
-            const m = getPhaseMetrics(pIdx);
-            const isPhaseActive = safeActivePhaseIndex === pIdx;
-
-            return (
-              <div
-                key={phase.id}
-                onClick={() => {
-                  onStageChange(phase.firstStage);
-                }}
-                className={`creative-card p-4 sm:p-5 flex flex-col justify-between transition-all cursor-pointer relative overflow-hidden group select-none ${
-                  isPhaseActive
-                    ? 'border-indigo-600 ring-2 ring-indigo-500/25 shadow-md bg-white'
-                    : m.isCompleted
-                    ? 'border-emerald-300 hover:border-emerald-400 bg-white shadow-2xs'
-                    : 'border-slate-200 hover:border-slate-300 bg-white'
-                }`}
-              >
-                {/* Top Accent Gradient Line */}
+              return (
                 <div
-                  className={`absolute top-0 left-0 right-0 h-1.5 transition-all ${
+                  key={phase.id}
+                  onClick={() => onStageChange(phase.firstStage)}
+                  className={`group relative rounded-2xl p-4 sm:p-5 transition-all duration-200 cursor-pointer flex flex-col justify-between border select-none card-3d-hover ${
                     isPhaseActive
-                      ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600'
+                      ? 'bg-gradient-to-b from-indigo-50/80 via-white to-white border-indigo-500 shadow-md ring-2 ring-indigo-500/20'
                       : m.isCompleted
-                      ? 'bg-emerald-500'
-                      : 'bg-slate-200 group-hover:bg-slate-300'
+                      ? 'bg-white hover:bg-slate-50/60 border-slate-200 hover:border-emerald-300 shadow-2xs hover:shadow-xs'
+                      : 'bg-white/80 hover:bg-white border-slate-200 hover:border-slate-300 shadow-2xs'
                   }`}
-                />
+                >
+                  {/* Top Phase Accent Line */}
+                  <div
+                    className={`absolute top-0 left-0 right-0 h-1 rounded-t-2xl transition-all ${
+                      isPhaseActive
+                        ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600'
+                        : m.isCompleted
+                        ? 'bg-emerald-500'
+                        : 'bg-transparent group-hover:bg-slate-200'
+                    }`}
+                  />
 
-                <div className="space-y-2.5">
-                  <div className="flex items-center justify-between gap-1.5">
-                    <span
-                      className={`mono text-[10px] font-black tracking-wider px-2 py-0.5 rounded ${
-                        isPhaseActive
-                          ? 'bg-indigo-100 text-indigo-700 font-extrabold'
-                          : 'bg-slate-100 text-slate-500'
-                      }`}
-                    >
-                      {phase.number}
-                    </span>
+                  <div className="space-y-3">
+                    {/* Phase Header Tag & Status Badge */}
+                    <div className="flex items-center justify-between gap-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <div
+                          className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                            isPhaseActive
+                              ? 'bg-indigo-600 text-white shadow-2xs'
+                              : m.isCompleted
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-slate-100 text-slate-500'
+                          }`}
+                        >
+                          <IconComponent className="w-3.5 h-3.5 stroke-[2.2]" />
+                        </div>
+                        <span
+                          className={`mono text-[10px] font-black tracking-wider uppercase px-1.5 py-0.5 rounded ${
+                            isPhaseActive
+                              ? 'bg-indigo-100 text-indigo-800 font-extrabold'
+                              : 'bg-slate-100 text-slate-500'
+                          }`}
+                        >
+                          {phase.number}
+                        </span>
+                      </div>
 
-                    {/* Status Badge */}
-                    {m.isCompleted ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-300">
-                        <CheckCircle className="w-3 h-3 stroke-[2.5]" />
-                        COMPLETED
-                      </span>
-                    ) : isPhaseActive ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                        <CircleDot className="w-3 h-3 text-indigo-600 animate-pulse" />
-                        IN PROGRESS
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500">
-                        UPCOMING
-                      </span>
-                    )}
+                      {/* Status Chip */}
+                      {m.isCompleted ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-300/80">
+                          <CheckCircle className="w-3 h-3 stroke-[2.5]" />
+                          100% DONE
+                        </span>
+                      ) : isPhaseActive ? (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse" />
+                          ACTIVE
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500">
+                          UPCOMING
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Title & Concise Non-Truncated Summary */}
+                    <div>
+                      <h3
+                        className={`text-sm font-black transition-colors ${
+                          isPhaseActive
+                            ? 'text-indigo-700'
+                            : 'text-slate-900 group-hover:text-indigo-600'
+                        }`}
+                      >
+                        {phase.title}
+                      </h3>
+                      <p className="text-[11px] text-slate-500 mt-1 leading-snug">
+                        {phase.description}
+                      </p>
+                    </div>
                   </div>
 
-                  <div>
-                    <h3
-                      className={`text-sm sm:text-base font-black transition-colors ${
-                        isPhaseActive
-                          ? 'text-indigo-700'
-                          : 'text-slate-900 group-hover:text-indigo-600'
-                      }`}
-                    >
-                      {phase.title}
-                    </h3>
-                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed line-clamp-2">
-                      {phase.description}
-                    </p>
-                  </div>
-                </div>
+                  {/* Micro Stage Segment Progress Bar */}
+                  <div className="pt-3 mt-3 border-t border-slate-100 space-y-2">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-slate-500 font-medium">
+                        {m.completedStages} of {m.totalStages} stages done
+                      </span>
+                      <span className={`mono font-bold ${isPhaseActive ? 'text-indigo-700' : m.isCompleted ? 'text-emerald-700' : 'text-slate-500'}`}>
+                        {m.progressPct}%
+                      </span>
+                    </div>
 
-                <div className="pt-3.5 mt-3 border-t border-slate-100 space-y-2">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-slate-500 font-medium">
-                      {phase.stages.length} Stages • {m.completedStages}/{m.totalStages} Done
-                    </span>
-                    <span className="mono font-bold text-slate-700">{m.progressPct}%</span>
-                  </div>
-
-                  {/* Progress bar */}
-                  <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                    {/* Segmented Micro-Bars */}
                     <div
-                      className={`h-full rounded-full transition-all duration-300 ${
-                        m.isCompleted
-                          ? 'bg-emerald-500'
-                          : isPhaseActive
-                          ? 'bg-gradient-to-r from-indigo-600 to-purple-600'
-                          : 'bg-slate-300'
-                      }`}
-                      style={{ width: `${m.progressPct}%` }}
-                    />
-                  </div>
+                      className="grid gap-1.5"
+                      style={{ gridTemplateColumns: `repeat(${phase.stages.length}, minmax(0, 1fr))` }}
+                    >
+                      {phase.stages.map((st) => {
+                        const isStDone = isStageComplete(st.id);
+                        const isStCurrent = st.id === currentStage;
+                        return (
+                          <div
+                            key={st.id}
+                            title={`${st.number}. ${st.name}: ${isStCurrent ? 'Current' : isStDone ? 'Completed' : 'Upcoming'}`}
+                            className={`h-1.5 rounded-full transition-all duration-300 ${
+                              isStDone
+                                ? 'bg-emerald-500'
+                                : isStCurrent
+                                ? 'bg-indigo-600 ring-2 ring-indigo-400/40 animate-pulse'
+                                : 'bg-slate-200'
+                            }`}
+                          />
+                        );
+                      })}
+                    </div>
 
-                  <div className="flex items-center justify-between pt-0.5 text-[11px] font-bold">
-                    {isPhaseActive ? (
-                      <span className="text-indigo-700 flex items-center gap-1">
-                        ● Currently Active
+                    {/* Action Navigation Cue */}
+                    <div className="flex items-center justify-between pt-0.5 text-[11px] font-bold">
+                      {isPhaseActive ? (
+                        <span className="text-indigo-700 flex items-center gap-1 font-extrabold">
+                          <span>In Focus</span>
+                          <span className="text-xs">↓</span>
+                        </span>
+                      ) : (
+                        <span className="text-slate-500 group-hover:text-indigo-600 flex items-center gap-0.5 transition-colors">
+                          <span>{m.isCompleted ? 'Revisit' : 'Enter'} Phase</span>
+                          <ChevronRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+                        </span>
+                      )}
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {phase.stages.length} {phase.stages.length === 1 ? 'stage' : 'stages'}
                       </span>
-                    ) : (
-                      <span className="text-slate-500 group-hover:text-indigo-600 flex items-center gap-0.5 transition-colors">
-                        Open Phase →
-                      </span>
-                    )}
-                    <ChevronRight
-                      className={`w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 ${
-                        isPhaseActive ? 'text-indigo-600' : 'text-slate-400'
-                      }`}
-                    />
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
-          SECTION 3: PERSISTENT STAGE PROGRESS TRACKER (Active Phase Stages)
+          SECTION 3: ACTIVE PHASE STAGE WORKFLOW TRACK
           ───────────────────────────────────────────────────────────── */}
-      <div className="bg-white border border-slate-200/90 rounded-2xl shadow-xs p-4 sm:p-5 space-y-3.5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+      <div className="bg-slate-50/70 border border-slate-200/90 rounded-2xl shadow-xs p-5 sm:p-6 space-y-3.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/70">
           <div>
             <div className="flex items-center gap-2">
-              <span className="mono text-[10px] font-black uppercase text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
-                {activePhase.number}
+              <span className="mono text-[10px] font-black uppercase text-indigo-700 bg-indigo-100/70 px-2 py-0.5 rounded border border-indigo-200">
+                {activePhase.number} WORKFLOW
               </span>
               <h3 className="text-sm sm:text-base font-black text-slate-900 tracking-tight">
-                {activePhase.title} — Stage Workflow
+                {activePhase.title} Execution Track
               </h3>
             </div>
             <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
@@ -990,14 +1048,24 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
               Currently Active
             </span>
             <span className="text-xs font-black text-indigo-700 mono">
-              Stage {currentStageObj.number} of 10 ({currentStageObj.short})
+              Stage {currentStageObj.number} of 10 • {currentStageObj.label}
             </span>
           </div>
         </div>
 
         {/* Horizontal responsive step progress bar for active phase stages */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
-          {activePhase.stages.map((st, sIdx) => {
+        <div
+          className="grid gap-2.5"
+          style={{
+            gridTemplateColumns:
+              activePhase.stages.length === 1
+                ? '1fr'
+                : activePhase.stages.length === 2
+                ? 'repeat(auto-fit, minmax(280px, 1fr))'
+                : 'repeat(auto-fit, minmax(230px, 1fr))',
+          }}
+        >
+          {activePhase.stages.map((st) => {
             const stStatus = getStageStatus(st.id);
             const isSelected = st.id === currentStage;
 
@@ -1006,27 +1074,27 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
                 key={st.id}
                 type="button"
                 onClick={() => onStageChange(st.id)}
-                className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+                className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-3 ${
                   isSelected
-                    ? 'bg-indigo-50/90 border-indigo-400 ring-2 ring-indigo-400/25 shadow-2xs'
+                    ? 'bg-white border-indigo-500 ring-2 ring-indigo-500/20 shadow-xs'
                     : stStatus === 'COMPLETED'
-                    ? 'bg-emerald-50/40 border-emerald-200 hover:bg-emerald-50/80 hover:border-emerald-300'
+                    ? 'bg-white/80 hover:bg-white border-slate-200 hover:border-emerald-300 shadow-2xs'
                     : stStatus === 'NEEDS_ATTENTION'
-                    ? 'bg-amber-50/50 border-amber-300 hover:bg-amber-50'
-                    : 'bg-slate-50/70 border-slate-200/90 hover:bg-white hover:border-slate-300'
+                    ? 'bg-amber-50/70 border-amber-300 hover:bg-amber-50 shadow-2xs'
+                    : 'bg-white/50 border-slate-200/80 hover:bg-white hover:border-slate-300'
                 }`}
               >
-                <div className="flex items-center gap-2.5 min-w-0">
+                <div className="flex items-center gap-3 min-w-0">
                   {/* Status Indicator Icon */}
                   <div
                     className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0 transition-colors ${
                       isSelected
-                        ? 'bg-indigo-600 text-white shadow-xs'
+                        ? 'bg-indigo-600 text-white shadow-2xs'
                         : stStatus === 'COMPLETED'
                         ? 'bg-emerald-600 text-white'
                         : stStatus === 'NEEDS_ATTENTION'
                         ? 'bg-amber-500 text-white'
-                        : 'bg-white text-slate-500 border border-slate-200'
+                        : 'bg-slate-100 text-slate-500 border border-slate-200'
                     }`}
                   >
                     {stStatus === 'COMPLETED' ? (
@@ -1042,14 +1110,14 @@ export const LifecycleManager: React.FC<LifecycleManagerProps> = ({
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs font-bold text-slate-900 truncate">{st.name}</span>
                     </div>
-                    <div className="text-[10px] text-slate-500 truncate">{st.desc}</div>
+                    <div className="text-[10px] text-slate-500 truncate mt-0.5">{st.desc}</div>
                   </div>
                 </div>
 
                 {/* Status Pill Indicator */}
                 <div className="shrink-0">
                   {isSelected ? (
-                    <span className="text-[9px] font-black uppercase tracking-wider bg-indigo-600 text-white px-2 py-0.5 rounded-full">
+                    <span className="text-[9px] font-black uppercase tracking-wider bg-indigo-600 text-white px-2 py-0.5 rounded-full shadow-2xs">
                       CURRENT
                     </span>
                   ) : stStatus === 'COMPLETED' ? (

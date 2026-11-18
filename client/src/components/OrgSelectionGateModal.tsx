@@ -212,7 +212,7 @@ export const OrgSelectionGateModal: React.FC<OrgSelectionGateModalProps> = ({
                 <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                   <div className="text-[10px] uppercase font-bold text-slate-400">Approved SKUs</div>
                   <div className="text-sm font-black text-slate-900 mono">6 Products</div>
-                  <div className="text-[10px] text-slate-500">Amla, Gulabari, Odomos...</div>
+                  <div className="text-[10px] text-slate-500">Amla, Gulabari, Odomos + 3 more</div>
                 </div>
                 <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                   <div className="text-[10px] uppercase font-bold text-slate-400">Rule Engines</div>
