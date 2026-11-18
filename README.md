@@ -1,5 +1,4 @@
 # Integrix AI — Intelligent Brand Governance & Content Integrity Platform
-### CodeNova India 2026 Round 2 — Pure React Edition
 
 **Integrix AI** is an intelligent, source-backed brand governance platform that enforces marketing compliance, product specifications, and policy verification on advertisement creatives.
 
