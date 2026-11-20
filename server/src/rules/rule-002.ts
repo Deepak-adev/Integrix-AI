@@ -29,9 +29,13 @@ export function evaluateRule002(
     campaign = dataSource.getCampaignById(campaignId);
   }
   if (!campaign && sku) {
-    // Find campaign matching price or sku
+    // Only match a campaign for the SKU if the campaign price matches the advertised price,
+    // or if the advertised price is discounted below base price and a candidate campaign exists.
     const skuCampaigns = dataSource.getCampaignsForSku(sku);
-    campaign = skuCampaigns.find(c => c.campaignPriceInr === price) || skuCampaigns[0];
+    campaign = skuCampaigns.find(c => c.campaignPriceInr === price);
+    if (!campaign && basePrice !== undefined && price < basePrice) {
+      campaign = skuCampaigns[0];
+    }
   }
 
   // 3. Scenario A: Displayed price equals base selling price without campaign discount
@@ -157,13 +161,15 @@ export function evaluateRule002(
 
   // 5. Scenario C: Price does not match base price and no valid campaign found
   const pastCampaigns = sku ? dataSource.getCampaignsForSku(sku) : [];
-  const expiredCampaign = pastCampaigns.find(c => c.endDate < pubDateStr);
+  const expiredCampaign = (price < (basePrice ?? Infinity)) ? pastCampaigns.find(c => c.endDate < pubDateStr) : undefined;
 
-  let explanation = `Displayed price ₹${price.toLocaleString('en-IN')} does not match the ${sku || 'product'} base selling price of ₹${basePrice ? basePrice.toLocaleString('en-IN') : '1,299'}.`;
-  if (expiredCampaign) {
-    explanation += ` The supplied campaign ${expiredCampaign.campaignId} ended on ${expiredCampaign.endDate} and does not authorise this price on ${pubDateStr}.`;
+  let explanation = `The advertised price ₹${price.toLocaleString('en-IN')} contradicts the approved catalogue base selling price of ₹${basePrice ? basePrice.toLocaleString('en-IN') : '1,299'} for SKU ${sku || 'NW-CS-001'}.`;
+  if (basePrice !== undefined && price > basePrice) {
+    explanation += ` The advertised price of ₹${price.toLocaleString('en-IN')} exceeds the approved base selling price (₹${basePrice.toLocaleString('en-IN')}), and no promotional campaign documentation substantiates this price on ${pubDateStr}.`;
+  } else if (expiredCampaign) {
+    explanation += ` The promotional campaign ${expiredCampaign.campaignId} ended on ${expiredCampaign.endDate} and cannot authorise discounted pricing on ${pubDateStr}.`;
   } else {
-    explanation += ` No matching active approved campaign is supplied for ₹${price.toLocaleString('en-IN')} on ${pubDateStr}.`;
+    explanation += ` No matching active approved campaign in the repository substantiates ₹${price.toLocaleString('en-IN')} on ${pubDateStr}.`;
   }
 
   return {
@@ -173,12 +179,12 @@ export function evaluateRule002(
     status: 'FAIL',
     severity: 'RED',
     observedValue: `₹${price.toLocaleString('en-IN')}`,
-    expectedValue: `Base selling price ₹${basePrice ? basePrice.toLocaleString('en-IN') : '1,299'} (or active approved campaign)`,
-    evidenceExcerpt: `Product Catalogue: SKU ${sku || 'NW-CS-001'} base selling price is ₹${basePrice || 1299}. ${expiredCampaign ? `Campaign ${expiredCampaign.campaignId} expired on ${expiredCampaign.endDate}.` : 'No matching active campaign in Campaign Offers.'}`,
+    expectedValue: `Approved Base Selling Price: ₹${basePrice ? basePrice.toLocaleString('en-IN') : '1,299'} (or substantiated campaign)`,
+    evidenceExcerpt: `Product Catalogue: SKU ${sku || 'NW-CS-001'} base selling price is ₹${basePrice || 1299} (MRP: ₹${product?.mrpInr || 1599}). ${price > (basePrice || 1299) ? `No active campaign in Campaign Offers authorises ₹${price.toLocaleString('en-IN')}.` : expiredCampaign ? `Campaign ${expiredCampaign.campaignId} expired on ${expiredCampaign.endDate}.` : 'No matching active campaign in Campaign Offers.'}`,
     sourceFilename: '05_Product_Catalogue_and_Campaigns.xlsx',
     sourceLocator: 'Product Catalogue and Campaign Offers sheets',
     explanation,
-    suggestedCorrection: `Update the displayed price to ₹${basePrice ? basePrice.toLocaleString('en-IN') : '1,299'} or provide a valid approved campaign record matching SKU, date, channel, price and conditions.`,
+    suggestedCorrection: `Align the advertised price with the approved catalogue base price of ₹${basePrice ? basePrice.toLocaleString('en-IN') : '1,299'} or provide approved campaign documentation substantiating ₹${price.toLocaleString('en-IN')}.`,
     confidence: 1.0,
   };
 }

@@ -143,20 +143,123 @@ export const CreativeAuditPage: React.FC<CreativeAuditPageProps> = ({
     removeFile();
   };
 
+  const handleSelectPreloadedFixture = async (fixtureId: string, skuVal: string, title: string) => {
+    try {
+      setIsLoading(true);
+      setStatusMessage(`Loading canonical test fixture ${fixtureId} (${title})...`);
+      const response = await fetch(`/ads/${fixtureId}.png`);
+      if (!response.ok) throw new Error(`Could not load /ads/${fixtureId}.png`);
+      const blob = await response.blob();
+      const fixtureFile = new File([blob], `${fixtureId}.png`, { type: 'image/png' });
+      setFile(fixtureFile);
+      setPreviewUrl(`/ads/${fixtureId}.png`);
+      setSku(skuVal);
+      setSubmissionId(fixtureId);
+      setErrorMessage(null);
+    } catch (err: any) {
+      setErrorMessage(`Failed to load fixture ${fixtureId}: ${err.message}`);
+    } finally {
+      setIsLoading(false);
+      setStatusMessage('');
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       {/* ── Page Header ── */}
-      <div>
-        <h2 className="text-xl font-bold text-slate-900 tracking-tight">Creative Audit</h2>
-        <p className="text-xs text-slate-500 mt-1">
-          Upload banner ads, social posts, catalogue pages, or campaign creatives for brand compliance verification.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900 tracking-tight">Creative Compliance Audit Studio</h2>
+          <p className="text-xs text-slate-500 mt-1">
+            Multimodal brand governance: verify visual logo consistency, product silhouette fidelity, and promotional claims against organisation policies.
+          </p>
+        </div>
+        <div className="flex items-center space-x-2 text-xs">
+          <span className="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 font-semibold border border-indigo-200">
+            {organisation} Context Active
+          </span>
+          <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200">
+            Multimodal CV Engine v2.1
+          </span>
+        </div>
       </div>
 
       {auditResult ? (
         <AuditResultView result={auditResult} onNewAudit={handleNewAudit} />
       ) : (
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Quick-Load NOVAWEAR Benchmark Test Pack */}
+          <div className="bg-gradient-to-r from-slate-50 to-indigo-50/40 rounded-xl border border-indigo-100 p-4 shadow-sm">
+            <div className="flex items-center justify-between pb-2 mb-3 border-b border-indigo-100/80">
+              <div className="flex items-center space-x-2">
+                <Sparkles className="w-4 h-4 text-indigo-600" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                  NOVAWEAR Multimodal Benchmark Test Creatives (7 Scenarios)
+                </h3>
+              </div>
+              <span className="text-[11px] text-indigo-700 font-medium">Click any scenario to auto-stage file & metadata</span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 text-xs">
+              <button
+                type="button"
+                onClick={() => handleSelectPreloadedFixture('AD-NW-001', 'NW-CS-001', 'Price & Silhouette Mismatch')}
+                className="p-2 text-left bg-white rounded-lg border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/30 transition-all"
+              >
+                <div className="font-bold text-slate-800 truncate">AD-NW-001</div>
+                <div className="text-[10px] text-slate-500 truncate">Price Mismatch (₹999 vs ₹1,299)</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectPreloadedFixture('AD-NW-002', 'NW-CS-002', 'Fabric Composition Mismatch')}
+                className="p-2 text-left bg-white rounded-lg border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/30 transition-all"
+              >
+                <div className="font-bold text-slate-800 truncate">AD-NW-002</div>
+                <div className="text-[10px] text-slate-500 truncate">Fabric Mismatch (100% Cotton vs 60/40)</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectPreloadedFixture('AD-NW-003', 'NW-TS-003', 'Approved Campaign (Weekend Essentials)')}
+                className="p-2 text-left bg-white rounded-lg border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/30 transition-all"
+              >
+                <div className="font-bold text-slate-800 truncate">AD-NW-003</div>
+                <div className="text-[10px] text-emerald-600 truncate">Approved Campaign (₹599)</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectPreloadedFixture('AD-NW-004', 'NW-TR-005', 'Pending Campaign')}
+                className="p-2 text-left bg-white rounded-lg border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/30 transition-all"
+              >
+                <div className="font-bold text-slate-800 truncate">AD-NW-004</div>
+                <div className="text-[10px] text-rose-600 truncate">Pending Campaign (₹1,399)</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectPreloadedFixture('AD-NW-005', 'NW-CS-001', 'Altered Logo & Wrinkle-Proof Claim')}
+                className="p-2 text-left bg-white rounded-lg border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/30 transition-all"
+              >
+                <div className="font-bold text-slate-800 truncate">AD-NW-005</div>
+                <div className="text-[10px] text-amber-600 truncate">Altered Logo & Wrinkle Claim</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectPreloadedFixture('AD-NW-006', '', 'Guaranteed Delivery Claim')}
+                className="p-2 text-left bg-white rounded-lg border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/30 transition-all"
+              >
+                <div className="font-bold text-slate-800 truncate">AD-NW-006</div>
+                <div className="text-[10px] text-slate-500 truncate">Guaranteed Delivery Claim</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectPreloadedFixture('AD-NW-007', 'NW-CS-001', 'Fully Compliant Baseline')}
+                className="p-2 text-left bg-white rounded-lg border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/30 transition-all"
+              >
+                <div className="font-bold text-slate-800 truncate">AD-NW-007</div>
+                <div className="text-[10px] text-emerald-600 truncate">100% Compliant Baseline</div>
+              </button>
+            </div>
+          </div>
+
           {/* Error Banner */}
           {errorMessage && (
             <div className="rounded-xl border border-rose-200 bg-rose-50/80 p-4 flex items-start gap-3">

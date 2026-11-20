@@ -15,6 +15,7 @@ import { evaluateRule004 } from '../../rules/rule-004.js';
 import { evaluateBrandVoice } from '../../rules/brand-rules.js';
 import { aiAuditAnalyzer } from '../ai/ai-audit-analyzer.js';
 import type { AuditAIAnalysis } from '../../types/index.js';
+import { visualIntelligenceEngine } from '../vision/visual-intelligence.engine.js';
 
 export class AuditEngine {
   /**
@@ -39,8 +40,91 @@ export class AuditEngine {
     // 3. Structure & analyze extracted claims
     const extractedContent = await contentExtractor.parseContent(rawText, metadata, method, this.dataSource);
 
-    // 4. Run policy & fact verification
-    return this.evaluateExtractedContent(extractedContent, originalFilename, metadata);
+    // 4. Run Computer Vision & Visual Feature Extraction
+    let visualAnalysis;
+    let visualFindings: Finding[] = [];
+    try {
+      const isVisualFile = fileType.startsWith('image/') || ['.png', '.jpg', '.jpeg', '.webp'].some(ext => filePath.toLowerCase().endsWith(ext));
+      const isKnownVisualSubmission = metadata?.submissionId?.includes('AD-NW-') || metadata?.submissionId?.includes('DAB-') || metadata?.submissionId?.includes('INX-DAB-');
+      if (isVisualFile || isKnownVisualSubmission) {
+        const visRes = await visualIntelligenceEngine.analyzeVisualCreative(
+          filePath,
+          originalFilename,
+          extractedContent,
+          metadata,
+          this.dataSource
+        );
+        visualAnalysis = visRes.visualAnalysis;
+        visualFindings = visRes.visualFindings;
+      }
+    } catch (visErr) {
+      console.warn('[AuditEngine] Visual intelligence analysis skipped or failed:', visErr);
+    }
+
+    // 5. Run policy & fact verification and merge multimodal findings
+    const baseResult = this.evaluateExtractedContent(extractedContent, originalFilename, metadata);
+    // 4. Run policy & fact verification and tag text/contextual findings
+    const findingsWithTypes = baseResult.findings.map(f => {
+      if (f.findingType) return f;
+      const isOcr = f.ruleId === 'NW-RULE-001' || f.ruleId === 'NW-RULE-002';
+      return {
+        ...f,
+        findingType: (isOcr ? 'OCR_TEXT' : 'CONTEXTUAL_POLICY') as 'OCR_TEXT' | 'CONTEXTUAL_POLICY'
+      };
+    });
+    baseResult.findings = findingsWithTypes;
+
+    if (visualFindings.length > 0 || visualAnalysis) {
+      // Merge unique visual findings into result findings
+      const mergedFindings = [...baseResult.findings];
+      for (const vf of visualFindings) {
+        if (!mergedFindings.some(f => f.ruleId === vf.ruleId && f.status === vf.status)) {
+          mergedFindings.push(vf);
+        }
+      }
+
+      // Recalculate summary with visual findings
+      let passCount = 0;
+      let failCount = 0;
+      let needsVerificationCount = 0;
+      let notFoundCount = 0;
+      let conflictingCount = 0;
+      let notApplicableCount = 0;
+
+      for (const f of mergedFindings) {
+        if (f.status === 'PASS') passCount++;
+        else if (f.status === 'FAIL') failCount++;
+        else if (f.status === 'NEEDS_VERIFICATION') needsVerificationCount++;
+        else if (f.status === 'NOT_FOUND') notFoundCount++;
+        else if (f.status === 'CONFLICTING') conflictingCount++;
+        else if (f.status === 'NOT_APPLICABLE') notApplicableCount++;
+      }
+
+      let overallStatus: AuditResult['overallStatus'] = 'PASS';
+      if (failCount > 0) {
+        overallStatus = 'FAIL';
+      } else if (needsVerificationCount > 0 || notFoundCount > 0 || conflictingCount > 0) {
+        overallStatus = 'NEEDS_VERIFICATION';
+      }
+
+      return {
+        ...baseResult,
+        overallStatus,
+        findings: mergedFindings,
+        summary: {
+          total: mergedFindings.length,
+          pass: passCount,
+          fail: failCount,
+          needsVerification: needsVerificationCount,
+          notFound: notFoundCount,
+          conflicting: conflictingCount,
+          notApplicable: notApplicableCount,
+        },
+        visualAnalysis,
+      };
+    }
+
+    return baseResult;
   }
 
   public evaluateExtractedContent(
@@ -48,7 +132,7 @@ export class AuditEngine {
     filename: string,
     metadata?: AuditSubmissionMetadata
   ): AuditResult {
-    const findings: Finding[] = [];
+    let findings: Finding[] = [];
     const executedRules: string[] = [];
 
     // Rule evaluators run only when the rule is present/executable in the
@@ -82,6 +166,16 @@ export class AuditEngine {
     // Brand Voice Restrictions
     const fBrand = evaluateBrandVoice(extractedContent, metadata);
     if (fBrand) findings.push(fBrand);
+
+    // Tag text/contextual findings with their findingType
+    findings = findings.map(f => {
+      if (f.findingType) return f;
+      const isOcr = f.ruleId === 'NW-RULE-001' || f.ruleId === 'NW-RULE-002';
+      return {
+        ...f,
+        findingType: (isOcr ? 'OCR_TEXT' : 'CONTEXTUAL_POLICY') as 'OCR_TEXT' | 'CONTEXTUAL_POLICY'
+      };
+    });
 
     // If no findings were generated (e.g. ad contains facts that all passed without triggering specific checks),
     // ensure base SKU validation is recorded

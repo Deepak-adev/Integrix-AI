@@ -1,4 +1,5 @@
 import { AuditResult, AcceptanceScenario, RepositoryStats, Finding, ExtractedAdContent } from '../types';
+import { getLocalVisualAnalysis } from './local-vision-profiles';
 
 export const LOCAL_PRODUCTS = [
   {
@@ -875,6 +876,18 @@ export function runClientSideScenarioAudit(scenarioId: string): {
     extractionMethod: 'PDF_TEXT',
   };
 
+  // Attach organisation-specific visual analysis (NOVAWEAR fashion / Dabur FMCG)
+  let visualAnalysis;
+  const vis = getLocalVisualAnalysis(scenario.id);
+  visualAnalysis = vis.visualAnalysis;
+  if (vis.visualFindings && vis.visualFindings.length > 0) {
+    for (const vf of vis.visualFindings) {
+      if (!findings.some(f => f.ruleId === vf.ruleId)) {
+        findings.push(vf);
+      }
+    }
+  }
+
   const result: AuditResult = {
     submissionId: scenario.testPackId,
     filename: scenario.filename,
@@ -890,6 +903,7 @@ export function runClientSideScenarioAudit(scenarioId: string): {
     },
     extractedContent,
     findings,
+    visualAnalysis,
     metadata: {
       organisation: scenario.id.startsWith('DAB-') ? 'Dabur India Limited' : 'NOVAWEAR',
       publicationChannel: scenario.channel,

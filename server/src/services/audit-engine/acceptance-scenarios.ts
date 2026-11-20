@@ -476,6 +476,31 @@ NOVAWEAR | Delivery promise`,
       },
     };
 
+    // Attach organisation-specific visual analysis for Dabur scenarios
+    try {
+      const { visualIntelligenceEngine } = await import('../vision/visual-intelligence.engine.js');
+      const visAsset = scenario.posterAssetPath ? path.basename(scenario.posterAssetPath) : scenario.filename;
+      const visRes = await visualIntelligenceEngine.analyzeVisualCreative(
+        scenario.posterAssetPath || scenario.filename,
+        visAsset,
+        result.extractedContent,
+        result.metadata,
+        auditEngine.dataSource
+      );
+      if (visRes.visualAnalysis) {
+        result.visualAnalysis = visRes.visualAnalysis;
+        if (visRes.visualFindings && visRes.visualFindings.length > 0) {
+          for (const vf of visRes.visualFindings) {
+            if (!result.findings.some((f) => f.ruleId === vf.ruleId)) {
+              result.findings.push(vf);
+            }
+          }
+        }
+      }
+    } catch (visErr) {
+      console.warn('[runAcceptanceScenario Dabur] Visual intelligence analysis skipped:', visErr);
+    }
+
     return { scenario, result, matchesExpected: result.overallStatus === scenario.expectedOutcome };
   }
 
@@ -491,6 +516,31 @@ NOVAWEAR | Delivery promise`,
   const { contentExtractor } = await import('../extraction/content-extractor.js');
   const extracted = await contentExtractor.parseContent(adText, metadata, 'PDF_TEXT');
   const result = auditEngine.evaluateExtractedContent(extracted, scenario.filename, metadata);
+
+  // Attach visual analysis from VisualIntelligenceEngine for complete multimodal intelligence
+  try {
+    const { visualIntelligenceEngine } = await import('../vision/visual-intelligence.engine.js');
+    const visAsset = scenario.posterAssetPath ? path.basename(scenario.posterAssetPath) : scenario.filename;
+    const visRes = await visualIntelligenceEngine.analyzeVisualCreative(
+      scenario.posterAssetPath || scenario.filename,
+      visAsset,
+      extracted,
+      metadata,
+      auditEngine.dataSource
+    );
+    if (visRes.visualAnalysis) {
+      result.visualAnalysis = visRes.visualAnalysis;
+      if (visRes.visualFindings && visRes.visualFindings.length > 0) {
+        for (const vf of visRes.visualFindings) {
+          if (!result.findings.some(f => f.ruleId === vf.ruleId)) {
+            result.findings.push(vf);
+          }
+        }
+      }
+    }
+  } catch (visErr) {
+    console.warn('[runAcceptanceScenario] Visual intelligence analysis skipped:', visErr);
+  }
 
   const matchesExpected = result.overallStatus === scenario.expectedOutcome;
   return { scenario, result, matchesExpected };

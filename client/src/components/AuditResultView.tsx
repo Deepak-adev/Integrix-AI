@@ -18,14 +18,16 @@ import {
   FileSpreadsheet,
 } from 'lucide-react';
 import { AuditResult, Finding, FindingStatus, FindingSeverity } from '../types';
+import { VisualAuditView } from './VisualAuditView';
 
 interface AuditResultViewProps {
   result: AuditResult;
   onNewAudit?: () => void;
   hideHeader?: boolean;
+  hideVisualIntelligence?: boolean;
 }
 
-export const AuditResultView: React.FC<AuditResultViewProps> = ({ result, onNewAudit, hideHeader = false }) => {
+export const AuditResultView: React.FC<AuditResultViewProps> = ({ result, onNewAudit, hideHeader = false, hideVisualIntelligence = false }) => {
   const [filterSeverity, setFilterSeverity] = useState<string>('ALL');
   const [expandedFindings, setExpandedFindings] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
@@ -100,6 +102,34 @@ export const AuditResultView: React.FC<AuditResultViewProps> = ({ result, onNewA
     if (filterSeverity === 'ALL') return true;
     return f.severity === filterSeverity;
   });
+
+  const getFindingTypeBadge = (type?: string) => {
+    switch (type) {
+      case 'OCR_TEXT':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200">
+            <FileText className="w-3 h-3 text-blue-600" />
+            <span>OCR Copy</span>
+          </span>
+        );
+      case 'COMPUTER_VISION':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-purple-50 text-purple-700 border border-purple-200">
+            <Layers className="w-3 h-3 text-purple-600" />
+            <span>Computer Vision</span>
+          </span>
+        );
+      case 'CONTEXTUAL_POLICY':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <ShieldCheck className="w-3 h-3 text-emerald-600" />
+            <span>Contextual Policy</span>
+          </span>
+        );
+      default:
+        return null;
+    }
+  };
 
   const getSeverityBadge = (sev: FindingSeverity) => {
     switch (sev) {
@@ -381,6 +411,7 @@ export const AuditResultView: React.FC<AuditResultViewProps> = ({ result, onNewA
                           <span className="font-mono text-xs font-bold text-slate-700">
                             {finding.ruleId || 'BASE-VERIFY'}
                           </span>
+                          {getFindingTypeBadge(finding.findingType)}
                           <span className="text-slate-300">•</span>
                           <span className="text-sm font-semibold text-slate-900">
                             {finding.policyName}
@@ -466,6 +497,22 @@ export const AuditResultView: React.FC<AuditResultViewProps> = ({ result, onNewA
               );
             })}
           </div>
+        )}
+
+        {/* ── Visual & Contextual Intelligence Extension ────────────────── */}
+        {!hideVisualIntelligence && result.visualAnalysis && (
+          <VisualAuditView
+            visualAnalysis={result.visualAnalysis}
+            creativeFilename={filename}
+            imageUrl={
+              filename?.startsWith('AD-NW-')
+                ? `/ads/${filename.replace(/\.pdf$/i, '.png')}`
+                : filename?.startsWith('DAB-')
+                ? `/ads/dabur/${filename.replace(/\.pdf$/i, '.png')}`
+                : undefined
+            }
+            findings={findings}
+          />
         )}
       </div>
     </div>

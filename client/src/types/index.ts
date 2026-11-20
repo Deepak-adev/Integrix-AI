@@ -22,6 +22,7 @@ export interface Finding {
   explanation: string;
   suggestedCorrection: string;
   confidence: number;
+  findingType?: 'OCR_TEXT' | 'COMPUTER_VISION' | 'CONTEXTUAL_POLICY';
 }
 
 export interface ExtractedAdContent {
@@ -72,6 +73,84 @@ export interface AuditResult {
     rulebookVersion: string;
   };
   discrepancyNote?: string;
+  visualAnalysis?: VisualAuditAnalysis;
+}
+
+export interface BoundingBox {
+  x: number; // percentage 0-100
+  y: number; // percentage 0-100
+  width: number; // percentage 0-100
+  height: number; // percentage 0-100
+  label: string;
+  type: 'LOGO' | 'PRODUCT' | 'CLAIM' | 'DISCLAIMER' | 'PRICE' | 'DISCREPANCY';
+  severity?: FindingSeverity;
+  confidence: number;
+}
+
+export interface LogoDetectionResult {
+  detected: boolean;
+  logoName?: string;
+  brandMatch: 'APPROVED_MATCH' | 'ALTERED' | 'UNAPPROVED_COLOR' | 'DISTORTED' | 'MISSING';
+  boundingBox?: BoundingBox;
+  confidence: number;
+  approvedAssetUrl: string;
+  observedDetails: string;
+  policyCompliance: 'COMPLIANT' | 'NON_COMPLIANT' | 'REVIEW_REQUIRED';
+  explanation: string;
+}
+
+export interface ProductVisualMatchResult {
+  detectedCategory: string;
+  detectedColor: string;
+  detectedColorHex?: string;
+  detectedGarmentType: string;
+  catalogueSku?: string;
+  catalogueExpectedColor?: string;
+  catalogueExpectedCategory?: string;
+  mismatchType?: 'NONE' | 'COLOR_MISMATCH' | 'GARMENT_TYPE_MISMATCH' | 'UNLISTED_PRODUCT';
+  similarityScore: number; // 0.0 - 1.0
+  boundingBox?: BoundingBox;
+  explanation: string;
+}
+
+export interface VisualClaimAudit {
+  id: string;
+  claimType: 'PRICING' | 'SUSTAINABILITY' | 'PERFORMANCE' | 'DELIVERY' | 'COMPOSITION' | 'DISCOUNT';
+  claimText: string;
+  visualRepresentation: string;
+  substantiated: boolean;
+  substantiationStatus: 'SUBSTANTIATED' | 'UNSUBSTANTIATED' | 'EXAGGERATED' | 'CONTRADICTORY';
+  boundingBox?: BoundingBox;
+  evidenceSource: string;
+  policyRuleId: string;
+  explanation: string;
+  severity: FindingSeverity;
+}
+
+export interface HumanReviewDecision {
+  findingId: string;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'OVERRIDDEN';
+  reviewedBy?: string;
+  reviewedAt?: string;
+  notes?: string;
+}
+
+export interface VisualAuditAnalysis {
+  pipelineVersion: string;
+  imageDimensions?: { width: number; height: number };
+  detectedObjects: BoundingBox[];
+  logoAnalysis: LogoDetectionResult;
+  productVisualMatch: ProductVisualMatchResult;
+  contextualClaims: VisualClaimAudit[];
+  multimodalSummary: {
+    visualComplianceScore: number; // 0 - 100
+    textComplianceScore: number; // 0 - 100
+    overallScore: number; // 0 - 100
+    criticalVisualViolations: number;
+    warnings: number;
+    isMisleadingVisualDetected: boolean;
+  };
+  humanDecisions?: Record<string, HumanReviewDecision>;
 }
 
 export interface AcceptanceScenario {
