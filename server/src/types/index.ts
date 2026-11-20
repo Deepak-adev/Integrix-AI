@@ -143,6 +143,7 @@ export interface AuditResult {
     publicationDate?: string;
     sku?: string;
     campaignId?: string;
+    submissionId?: string;
     auditTimestamp: string;
     rulebookVersion: string;
   };

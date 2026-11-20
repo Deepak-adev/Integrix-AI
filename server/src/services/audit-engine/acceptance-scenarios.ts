@@ -320,7 +320,7 @@ NOVAWEAR | Delivery promise`,
     'DAB-SCENARIO-6': `ODOMOS Liquid Vaporiser\n100% KILLS MOSQUITOES ALL NIGHT!\nKeep Mosquitoes Away, Keep Your Family Safe with Liquid Vaporiser\nSYNTHETIC TEST AD`,
   };
 
-  const isDabur = scenario.id.startsWith('DAB-') || scenario.canonicalTestId.startsWith('INX-DAB-');
+  const isDabur = scenario.id.startsWith('DAB-') || (scenario.canonicalTestId && scenario.canonicalTestId.startsWith('INX-DAB-'));
 
   if (isDabur) {
     const findings: any[] = [];
@@ -463,6 +463,8 @@ NOVAWEAR | Delivery promise`,
         extractionMethod: 'PDF_TEXT',
       },
       findings,
+      executedRules: findings.map(f => f.ruleId).filter(Boolean),
+      analysisEngine: 'Dabur India Deterministic Verification Engine',
       metadata: {
         organisation: 'Dabur India Limited',
         publicationChannel: scenario.channel,

@@ -38,6 +38,9 @@ model Organisation {
   rulebookReleases      RulebookRelease[]
   rulebookReleaseRules  RulebookReleaseRule[]
   rulebookReleaseSources RulebookReleaseSource[]
+  policyAnalysisRuns    PolicyAnalysisRun[]
+  policyFindings        PolicyFinding[]
+  policyFindingReviews  PolicyFindingReview[]
 }
 
 model User {
@@ -399,3 +402,120 @@ model RulebookReleaseSource {
   @@index([organisationId, releaseId])
   @@index([organisationId, sourceId])
 }
+
+// ─────────────────────────────────────────────────────────────
+// AGENTIC POLICY INTELLIGENCE & CONFLICT RESOLUTION
+// ─────────────────────────────────────────────────────────────
+
+enum PolicyIntelligenceCategory {
+  CONFLICT
+  AMBIGUITY
+  MISSING_REQUIREMENT
+  DUPLICATION
+}
+
+enum PolicyIntelligenceSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum PolicyFindingReviewStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EDITED
+  DEFERRED
+}
+
+model PolicyAnalysisRun {
+  id                 String    @id @default(cuid())
+  organisationId     String
+  runId              String
+  title              String?
+  scope              String    @default("ALL") // "ALL", "ACTIVE_RULES", "SOURCES", "DRAFTS"
+  status             String    @default("COMPLETED") // "RUNNING", "COMPLETED", "FAILED"
+  aiProvider         String?   // "gemini", "xai", "none" (deterministic)
+  aiModel            String?
+  summary            String?
+  totalFindings      Int       @default(0)
+  conflictsCount     Int       @default(0)
+  ambiguitiesCount   Int       @default(0)
+  missingCount       Int       @default(0)
+  duplicatesCount    Int       @default(0)
+  pendingReviewCount Int       @default(0)
+  metadata           Json?
+  startedAt          DateTime  @default(now())
+  completedAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  organisation   Organisation    @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  findings       PolicyFinding[]
+
+  @@unique([organisationId, runId])
+  @@index([organisationId])
+  @@index([organisationId, createdAt])
+}
+
+model PolicyFinding {
+  id                   String                     @id @default(cuid())
+  organisationId       String
+  runId                String
+  findingId            String
+  category             PolicyIntelligenceCategory
+  severity             PolicyIntelligenceSeverity @default(MEDIUM)
+  status               PolicyFindingReviewStatus  @default(PENDING)
+  title                String
+  explanation          String
+  affectedPolicyOrDoc  String
+  sourceDocumentName   String?
+  sourceLocator        String?
+  evidenceExcerpts     String[]                   @default([])
+  existingWording      String?
+  recommendedWording   String?
+  rationale            String?
+  confidence           Float                      @default(0.85)
+  isNeedsVerification  Boolean                    @default(false)
+  proposedDraftRuleId  String?
+  metadata             Json?
+  createdAt            DateTime                   @default(now())
+  updatedAt            DateTime                   @updatedAt
+
+  organisation Organisation          @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  analysisRun  PolicyAnalysisRun     @relation(fields: [organisationId, runId], references: [organisationId, runId], onDelete: Cascade)
+  reviews      PolicyFindingReview[]
+
+  @@unique([organisationId, findingId])
+  @@index([organisationId])
+  @@index([organisationId, runId])
+  @@index([organisationId, category])
+  @@index([organisationId, severity])
+  @@index([organisationId, status])
+}
+
+model PolicyFindingReview {
+  id               String                    @id @default(cuid())
+  organisationId   String
+  findingId        String
+  action           PolicyFindingReviewStatus // ACCEPTED, REJECTED, EDITED, DEFERRED
+  reviewerName     String                    @default("Lead Compliance Administrator")
+  reviewerRole     String                    @default("ADMIN")
+  adminComments    String?
+  rejectionReason  String?
+  modifiedWording  String?
+  stagedRuleId     String?
+  stagedDraftId    String?
+  metadata         Json?
+  reviewedAt       DateTime                  @default(now())
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+
+  organisation Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  finding      PolicyFinding @relation(fields: [organisationId, findingId], references: [organisationId, findingId], onDelete: Cascade)
+
+  @@index([organisationId])
+  @@index([organisationId, findingId])
+  @@index([organisationId, action])
+}
+

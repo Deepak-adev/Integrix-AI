@@ -5,3 +5,4 @@ export * from './policy-rule.repository.js';
 export * from './rule-parameter.repository.js';
 export * from './rule-exception.repository.js';
 export * from './rulebook-release.repository.js';
+export * from './policy-intelligence.repository.js';

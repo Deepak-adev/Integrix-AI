@@ -1,0 +1,263 @@
+{
+  "Product Catalogue": [
+    [
+      "SKU",
+      "Product Name",
+      "Category",
+      "Colour",
+      "Composition",
+      "Fit",
+      "Size Range",
+      "MRP_INR",
+      "Selling Price_INR",
+      "Approved Product Description",
+      "Approved Claims",
+      "Claims Not Approved",
+      "Care Instructions",
+      "Status",
+      "Last Updated"
+    ],
+    [
+      "NW-CS-001",
+      "Classic Cotton Shirt",
+      "Shirts",
+      "Navy",
+      "100% cotton",
+      "Regular fit",
+      "S, M, L, XL",
+      1799,
+      1299,
+      "A button-down everyday shirt with a curved hem and a single chest pocket.",
+      "100% cotton; regular fit; single chest pocket",
+      "Wrinkle-proof; shrink-proof; hypoallergenic",
+      "Machine wash cold with similar colours; do not bleach; line dry in shade.",
+      "Active",
+      "2026-10-01"
+    ],
+    [
+      "NW-CS-002",
+      "Everyday Oxford Shirt",
+      "Shirts",
+      "White",
+      "60% cotton, 40% polyester",
+      "Regular fit",
+      "S, M, L, XL",
+      1599,
+      1199,
+      "An easy-care Oxford-style shirt for everyday use.",
+      "Cotton-polyester blend; regular fit",
+      "100% cotton; pure cotton; stain-proof",
+      "Machine wash cold; wash dark colours separately; warm iron if needed.",
+      "Active",
+      "2026-10-01"
+    ],
+    [
+      "NW-TS-003",
+      "Core Crew T-Shirt",
+      "T-Shirts",
+      "Cloud Grey",
+      "95% cotton, 5% elastane",
+      "Regular fit",
+      "XS, S, M, L, XL",
+      899,
+      649,
+      "A crew-neck T-shirt with a soft cotton-rich fabric and a small chest mark.",
+      "Cotton-rich blend; crew neck; 5% elastane",
+      "100% cotton; sweat-proof; odour-proof",
+      "Machine wash cold inside out; do not iron directly on print.",
+      "Active",
+      "2026-10-01"
+    ],
+    [
+      "NW-TS-004",
+      "Relaxed Weekend Tee",
+      "T-Shirts",
+      "Rust",
+      "100% cotton",
+      "Relaxed fit",
+      "S, M, L, XL",
+      999,
+      749,
+      "A relaxed-fit cotton T-shirt for casual everyday wear.",
+      "100% cotton; relaxed fit",
+      "Oversized fit; colourfast; non-shrink",
+      "Wash inside out with similar colours; line dry in shade.",
+      "Active",
+      "2026-10-01"
+    ],
+    [
+      "NW-TR-005",
+      "Everyday Chino",
+      "Trousers",
+      "Stone",
+      "98% cotton, 2% elastane",
+      "Slim straight fit",
+      "30, 32, 34, 36, 38",
+      1899,
+      1499,
+      "A cotton-stretch chino with a slim straight leg and front slant pockets.",
+      "Cotton-stretch blend; slim straight fit",
+      "100% cotton; formal wear; waterproof",
+      "Machine wash cold; do not bleach; warm iron.",
+      "Active",
+      "2026-10-01"
+    ],
+    [
+      "NW-OS-006",
+      "Lightweight Overshirt",
+      "Layers",
+      "Slate Blue",
+      "70% cotton, 30% linen",
+      "Relaxed fit",
+      "S, M, L, XL",
+      2299,
+      1899,
+      "A lightweight button-front layer with two patch pockets.",
+      "Cotton-linen blend; two patch pockets",
+      "100% linen; all-weather; thermal",
+      "Gentle machine wash; line dry; warm iron on reverse.",
+      "Active",
+      "2026-10-01"
+    ],
+    [
+      "NW-CS-007",
+      "Textured Office Shirt",
+      "Shirts",
+      "Warm Sand",
+      "55% cotton, 45% viscose",
+      "Regular fit",
+      "S, M, L, XL",
+      1699,
+      1399,
+      "A textured shirt with a regular fit and button cuffs.",
+      "Cotton-viscose blend; textured finish",
+      "100% cotton; wrinkle-free; premium grade",
+      "Gentle machine wash; wash separately first time; line dry.",
+      "Active",
+      "2026-10-01"
+    ],
+    [
+      "NW-TS-008",
+      "Graphic Line T-Shirt",
+      "T-Shirts",
+      "White",
+      "100% cotton",
+      "Regular fit",
+      "S, M, L, XL",
+      1099,
+      849,
+      "A crew-neck T-shirt featuring the NOVAWEAR line graphic on the front.",
+      "100% cotton; printed front graphic",
+      "Fade-proof; limited edition (unless campaign record says so)",
+      "Wash inside out; do not iron directly on graphic; line dry.",
+      "Active",
+      "2026-10-01"
+    ]
+  ],
+  "Campaign Offers": [
+    [
+      "Campaign ID",
+      "SKU",
+      "Campaign Name",
+      "Campaign Price_INR",
+      "Start Date",
+      "End Date",
+      "Eligible Channels",
+      "Conditions",
+      "Approval Status",
+      "Approver"
+    ],
+    [
+      "CMP-26-014",
+      "NW-CS-001",
+      "October Wardrobe Edit",
+      1199,
+      "2026-10-15",
+      "2026-10-31",
+      "NOVAWEAR website",
+      "One unit per customer; while campaign stock lasts.",
+      "Approved",
+      "Merchandising Lead"
+    ],
+    [
+      "CMP-26-018",
+      "NW-TS-003",
+      "Weekend Essentials",
+      599,
+      "2026-11-01",
+      "2026-11-15",
+      "NOVAWEAR website; Instagram Shop",
+      "Selected sizes only; price shown at checkout.",
+      "Approved",
+      "Merchandising Lead"
+    ],
+    [
+      "CMP-26-021",
+      "NW-TR-005",
+      "Chino Refresh",
+      1399,
+      "2026-11-10",
+      "2026-11-20",
+      "NOVAWEAR website",
+      "Not combinable with other coupon codes.",
+      "Pending",
+      "Merchandising Lead"
+    ]
+  ],
+  "Field Dictionary": [
+    [
+      "Field",
+      "Definition",
+      "Source of truth",
+      "Notes"
+    ],
+    [
+      "SKU",
+      "Unique stock keeping unit for a sellable product.",
+      "Merchandising master",
+      "Must match product listing and campaign records."
+    ],
+    [
+      "Composition",
+      "Fibre composition by percentage.",
+      "Approved product specification",
+      "Do not infer from product name or image."
+    ],
+    [
+      "Fit",
+      "Assigned fit category for the SKU.",
+      "Merchandising master",
+      "Use exact label only."
+    ],
+    [
+      "MRP_INR",
+      "Maximum retail price recorded for the SKU.",
+      "Current product catalogue",
+      "Campaign pricing does not overwrite MRP."
+    ],
+    [
+      "Selling Price_INR",
+      "Current base selling price.",
+      "Current product catalogue",
+      "Campaign price applies only with an approved campaign record."
+    ],
+    [
+      "Approved Claims",
+      "Product-specific claims permitted in customer-facing copy.",
+      "Product specification and evidence",
+      "Claims may not be transferred to other SKUs."
+    ],
+    [
+      "Claims Not Approved",
+      "Known claims that must not be used without further substantiation.",
+      "Merchandising / Quality review",
+      "Not an exhaustive list of all prohibited claims."
+    ],
+    [
+      "Approval Status",
+      "State of campaign approval.",
+      "Campaign approval workflow",
+      "Only Approved campaigns may be used."
+    ]
+  ]
+}

@@ -4,6 +4,8 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import auditRoutes from './routes/audit.routes.js';
+import policyIntelligenceRoutes from './routes/policy-intelligence.routes.js';
+import documentRoutes from './routes/document.routes.js';
 import { repositoryLoader } from './services/ingestion/repository-loader.js';
 import { getProviderStatus } from './services/ai/ai-provider-factory.js';
 
@@ -55,6 +57,8 @@ app.use('/uploads', express.static(uploadsPath));
 
 // ─── API routes ──────────────────────────────────────────────────────────────
 app.use('/api/audit', auditRoutes);
+app.use('/api/policy-intelligence', policyIntelligenceRoutes);
+app.use('/api/documents', documentRoutes);
 
 // ─── Health check ────────────────────────────────────────────────────────────
 app.get('/api/health', (_req, res) => {

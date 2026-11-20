@@ -106,6 +106,16 @@ export const TextAuditPage: React.FC<TextAuditPageProps> = ({
     try {
       const result = await analyzeText(text, metadata);
       setAuditResult(result);
+      try {
+        const targetOrgKey = organisation.toLowerCase().includes('dabur') ? 'org-dabur' : 'org-novawear';
+        localStorage.setItem(`integrix_last_audit_${targetOrgKey}`, JSON.stringify({
+          timestamp: Date.now(),
+          status: 'COMPLETED',
+          submissionId: result.submissionId,
+          verdict: result.overallStatus,
+          findingsCount: result.findings?.length || 0
+        }));
+      } catch {}
     } catch (err: any) {
       console.error('[TextAudit] Audit submission error:', err);
       if (err instanceof ApiError && err.status === 409) {

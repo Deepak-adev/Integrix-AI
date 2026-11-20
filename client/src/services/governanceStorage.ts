@@ -714,7 +714,11 @@ export const NOVAWEAR_POLICIES: PolicyDocumentItem[] = [
   { id: 'SRC-NW-002', name: '02_Company_Profile.pdf', status: 'Indexed', category: 'Corporate Profile', description: 'Legal entity details, registered trade names, corporate governance, key contacts.' },
   { id: 'SRC-NW-003', name: '03_Marketing_and_Communication_Policy.pdf', status: 'Indexed', category: 'Marketing Policy', description: 'Claims substantiation standards, prohibited superlatives, social media guidelines, influencer rules.' },
   { id: 'SRC-NW-004', name: '04_Product_and_Customer_Information_Policy.pdf', status: 'Indexed', category: 'Product Policy', description: 'Fibre composition disclosure rules, country of origin, size charting, care label standards.' },
-  { id: 'SRC-NW-005', name: '05_Pricing_Discounts_and_Offers_Policy.pdf', status: 'Indexed', category: 'Commercial Policy', description: 'Price display rules, markdown approvals, discount validity periods, strike-through price conditions.' },
+  { id: 'SRC-NW-005', name: '05_Product_Catalogue_and_Campaigns.xlsx', status: 'Indexed', category: 'Product Catalogue & Campaigns', description: 'Master spreadsheet with approved SKU compositions, pricing floors (₹899), and discount bounds.' },
+  { id: 'SRC-NW-006', name: '06_Universal_Policy_Document_Template.docx', status: 'Indexed', category: 'Governance Word Template', description: 'Standard enterprise Word document template defining policy hierarchy and compliance terms.' },
+  { id: 'SRC-NW-007', name: '07_Generated_Policy_Profile_Draft.docx', status: 'Indexed', category: 'Policy Profile Synthesis', description: 'Comprehensive drafted policy profile synthesized by AI for NOVAWEAR commercial governance.' },
+  { id: 'SRC-NW-008', name: 'Colour_Reference.txt', status: 'Indexed', category: 'Style Palette Reference', description: 'Exact RGB and HEX colour specification file for brand and packaging collateral.' },
+  { id: 'SRC-NW-009', name: 'README.txt', status: 'Indexed', category: 'Repository Manifest', description: 'Master document repository manifest and regulatory ingestion checklist.' },
 ];
 
 export const getCampaignsForOrg = (orgId: string): CampaignItem[] => {

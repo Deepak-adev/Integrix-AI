@@ -75,6 +75,7 @@ import { TextAuditPage } from './components/TextAuditPage';
 import { PolicyRepositoryPage } from './components/PolicyRepositoryPage';
 import { AuditHistoryPage } from './components/AuditHistoryPage';
 import { ApprovalCentrePage } from './components/ApprovalCentrePage';
+import { PolicyIntelligenceStudio } from './components/PolicyIntelligenceStudio';
 import { SettingsPage } from './components/SettingsPage';
 import { OrgSelectionGateModal } from './components/OrgSelectionGateModal';
 import { LifecycleManager, LifecycleStage } from './components/LifecycleManager';
@@ -135,6 +136,7 @@ export type Page =
   | 'audit-history'
   | 'policy-repository'
   | 'approval-centre'
+  | 'policy-intelligence'
   | 'settings';
 
 const PRODUCTS: Product[] = DABUR_PRODUCTS;
@@ -453,18 +455,13 @@ export const App: React.FC = () => {
   const [showExpectedOutcome, setShowExpectedOutcome] = useState(false);
   const [showBenchmarkDetail, setShowBenchmarkDetail] = useState(false);
   const [leftConsoleTab, setLeftConsoleTab] = useState<'ocr' | 'specs' | 'scenario'>('ocr');
-  const [lifecycleStage, setLifecycleStage] = useState<LifecycleStage>(() => {
+  const [lifecycleStage, setLifecycleStage] = useState<LifecycleStage>('docs');
+  const [workflowReturnStage, setWorkflowReturnStage] = useState<LifecycleStage | null>(() => {
     try {
-      const saved = localStorage.getItem('integrix_lifecycle_stage');
-      const validStages: LifecycleStage[] = [
-        'org', 'sector', 'docs', 'extraction', 'review',
-        'approval', 'repository', 'audit', 'report', 'decision'
-      ];
-      if (saved && validStages.includes(saved as LifecycleStage)) {
-        return saved as LifecycleStage;
-      }
-    } catch {}
-    return 'org';
+      return (sessionStorage.getItem('integrix_workflow_return_stage') as LifecycleStage) || null;
+    } catch {
+      return null;
+    }
   });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<'workspace' | 'governance' | 'insights' | null>(null);
@@ -536,6 +533,14 @@ export const App: React.FC = () => {
     if (orgProducts.length > 0) {
       setSku(orgProducts[0].sku);
     }
+    try {
+      const savedStage = localStorage.getItem(`integrix_lifecycle_stage_${orgId}`) || (orgId === 'org-novawear' ? localStorage.getItem('integrix_lifecycle_stage') : null);
+      if (savedStage) {
+        setLifecycleStage(savedStage as LifecycleStage);
+      } else {
+        setLifecycleStage('org');
+      }
+    } catch {}
     const target = organisations.find((o) => o.id === orgId);
     if (target) showToast(`Switched active organisation to ${target.name}`);
   };
@@ -707,8 +712,19 @@ export const App: React.FC = () => {
   }, []);
 
   const nav = (p: Page) => {
+    // Entering governance fresh from main nav always introduces the evaluator from Organisation Onboarding
+    if (p === 'governance') {
+      setLifecycleStage('org');
+    }
     setPage(p);
     window.location.hash = `#/${p}`;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const navToWorkflowStage = (stage: LifecycleStage) => {
+    setLifecycleStage(stage);
+    setPage('governance');
+    window.location.hash = '#/governance';
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -878,6 +894,18 @@ export const App: React.FC = () => {
       setResult(r);
       setTab('faults');
       if (!simText) setSimText(text);
+
+      // Record verified audit execution for the active organisation
+      try {
+        const auditOrgId = forcedOrgId || activeOrg.id;
+        localStorage.setItem(`integrix_last_audit_${auditOrgId}`, JSON.stringify({
+          timestamp: Date.now(),
+          status: 'COMPLETED',
+          adCode: meta.sku || 'CUSTOM',
+          verdict: r.status,
+          faultsCount: r.faults.length
+        }));
+      } catch {}
     } finally {
       if (auditSeqRef.current === currentSeq) {
         setAuditing(false);
@@ -991,6 +1019,16 @@ export const App: React.FC = () => {
         scenarioRes = await runScenario(item.scenarioId);
         if (auditSeqRef.current === currentSeq && scenarioRes && scenarioRes.result) {
           setBackendAuditResult(scenarioRes.result);
+          try {
+            const auditOrgId = activeOrg.id;
+            localStorage.setItem(`integrix_last_audit_${auditOrgId}`, JSON.stringify({
+              timestamp: Date.now(),
+              status: 'COMPLETED',
+              scenarioId: item.scenarioId,
+              verdict: scenarioRes.result.overallStatus,
+              findingsCount: scenarioRes.result.findings?.length || 0
+            }));
+          } catch {}
         }
       } catch (scenarioErr) {
         console.warn('[Audit] Local scenario fallback notice:', scenarioErr);
@@ -1311,6 +1349,24 @@ export const App: React.FC = () => {
                     </button>
                     <button
                       onClick={() => {
+                        nav('policy-intelligence');
+                        closeDropdownImmediately();
+                      }}
+                      className={`w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-bold text-left transition-colors cursor-pointer ${
+                        page === 'policy-intelligence' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <Sparkles className="w-4 h-4 text-indigo-600" />
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span>Policy Intelligence</span>
+                          <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-indigo-100 text-indigo-700">AI</span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-normal">Conflict & ambiguity detection</div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => {
                         nav('approval-centre');
                         closeDropdownImmediately();
                       }}
@@ -1434,6 +1490,26 @@ export const App: React.FC = () => {
           {/* RIGHT: Active Org Badge, User Profile & Actions */}
           <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
             {/* Interactive Active Organisation Dropdown / Switcher */}
+            {page === 'governance' ? (
+              /* In Evaluator Demonstration Mode, show fixed NOVAWEAR badge with no switcher */
+              <div
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs shadow-2xs"
+                title="NOVAWEAR Retail Private Limited (Evaluator Walkthrough Mode)"
+              >
+                <div
+                  className="w-5 h-5 rounded-md flex items-center justify-center bg-white border border-slate-200/90 shadow-2xs overflow-hidden shrink-0 p-0.5"
+                >
+                  <img src="/novawear-logo.png" alt="NOVAWEAR" className="w-full h-full object-contain" onError={(e) => { (e.target as any).style.display = 'none'; }} />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Org:</span>
+                  <span className="font-extrabold text-slate-900">
+                    NOVAWEAR
+                  </span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                </div>
+              </div>
+            ) : (
             <div className="relative">
               <button
                 type="button"
@@ -1552,6 +1628,7 @@ export const App: React.FC = () => {
                 </div>
               )}
             </div>
+            )}
 
             {/* Campaign Creatives Quick Trigger */}
             <button
@@ -1717,6 +1794,18 @@ export const App: React.FC = () => {
                 >
                   <FileCheck2 className="w-4 h-4 text-indigo-600" />
                   <span>Policy Repository & Rules</span>
+                </button>
+                <button
+                  onClick={() => {
+                    nav('policy-intelligence');
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg font-bold text-left ${
+                    page === 'policy-intelligence' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <Sparkles className="w-4 h-4 text-indigo-600" />
+                  <span>Policy Intelligence</span>
                 </button>
                 <button
                   onClick={() => {
@@ -2483,19 +2572,18 @@ export const App: React.FC = () => {
               currentStage={lifecycleStage}
               onStageChange={(newStage) => {
                 setLifecycleStage(newStage);
+              }}
+              onNavigateTo={(targetPage, returnStage) => {
+                const stageToRecord = returnStage || lifecycleStage;
+                setWorkflowReturnStage(stageToRecord);
                 try {
-                  localStorage.setItem('integrix_lifecycle_stage', newStage);
+                  sessionStorage.setItem('integrix_workflow_return_stage', stageToRecord);
                 } catch {}
-              }}
-              onNavigateToAudit={() => {
-                nav('audit');
-              }}
-              onNavigateTo={(targetPage) => {
                 nav(targetPage as any);
               }}
               onBackToHome={() => nav('home')}
-              onSwitchOrg={() => setOrgGateOpen(true)}
-              activeOrgName={activeOrg.name}
+              activeOrgName="NOVAWEAR Retail Private Limited"
+              activeOrgId="org-novawear"
             />
           </div>
         )}
@@ -3568,6 +3656,17 @@ export const App: React.FC = () => {
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
+                {workflowReturnStage && (
+                  <button
+                    onClick={() => navToWorkflowStage(workflowReturnStage)}
+                    className="text-xs font-bold px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 transition-colors cursor-pointer flex items-center gap-1.5"
+                  >
+                    <span>← Return to Governance Workflow</span>
+                    <span className="text-[10px] uppercase font-black px-1.5 py-0.5 rounded bg-indigo-200/60 text-indigo-800">
+                      Step 05
+                    </span>
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     setEditingRule(null);
@@ -3755,12 +3854,25 @@ export const App: React.FC = () => {
                   Upload PDF, DOCX, or high-res images for OCR extraction, policy cross-checking, and persistent storage
                 </p>
               </div>
-              <button
-                onClick={() => nav('home')}
-                className="text-xs font-bold text-indigo-600 hover:underline cursor-pointer flex items-center gap-1"
-              >
-                ← Return to Dashboard
-              </button>
+              <div className="flex items-center gap-3">
+                {workflowReturnStage && (
+                  <button
+                    onClick={() => navToWorkflowStage(workflowReturnStage)}
+                    className="text-xs font-bold px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 transition-colors cursor-pointer flex items-center gap-1.5"
+                  >
+                    <span>← Return to Governance Workflow</span>
+                    <span className="text-[10px] uppercase font-black px-1.5 py-0.5 rounded bg-indigo-200/60 text-indigo-800">
+                      Step 06
+                    </span>
+                  </button>
+                )}
+                <button
+                  onClick={() => nav('home')}
+                  className="text-xs font-bold text-indigo-600 hover:underline cursor-pointer flex items-center gap-1"
+                >
+                  ← Return to Dashboard
+                </button>
+              </div>
             </div>
             <CreativeAuditPage
               organisation={activeOrg.name}
@@ -3831,12 +3943,25 @@ export const App: React.FC = () => {
                   Indexed brand guidelines, commercial campaign offers, and product catalogue records
                 </p>
               </div>
-              <button
-                onClick={() => nav('home')}
-                className="text-xs font-bold text-indigo-600 hover:underline cursor-pointer flex items-center gap-1"
-              >
-                ← Return to Dashboard
-              </button>
+              <div className="flex items-center gap-3">
+                {workflowReturnStage && (
+                  <button
+                    onClick={() => navToWorkflowStage(workflowReturnStage)}
+                    className="text-xs font-bold px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 transition-colors cursor-pointer flex items-center gap-1.5"
+                  >
+                    <span>← Return to Governance Workflow</span>
+                    <span className="text-[10px] uppercase font-black px-1.5 py-0.5 rounded bg-indigo-200/60 text-indigo-800">
+                      Step 01
+                    </span>
+                  </button>
+                )}
+                <button
+                  onClick={() => nav('home')}
+                  className="text-xs font-bold text-indigo-600 hover:underline cursor-pointer flex items-center gap-1"
+                >
+                  ← Return to Dashboard
+                </button>
+              </div>
             </div>
             <PolicyRepositoryPage
               activeOrg={activeOrg}
@@ -3858,14 +3983,76 @@ export const App: React.FC = () => {
                   Review and sign off on submissions flagged with unverified claims or policy warnings
                 </p>
               </div>
-              <button
-                onClick={() => nav('home')}
-                className="text-xs font-bold text-indigo-600 hover:underline cursor-pointer flex items-center gap-1"
-              >
-                ← Return to Dashboard
-              </button>
+              <div className="flex items-center gap-3">
+                {workflowReturnStage && (
+                  <button
+                    onClick={() => navToWorkflowStage(workflowReturnStage)}
+                    className="text-xs font-bold px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 transition-colors cursor-pointer flex items-center gap-1.5"
+                  >
+                    <span>← Return to Governance Workflow</span>
+                    <span className="text-[10px] uppercase font-black px-1.5 py-0.5 rounded bg-indigo-200/60 text-indigo-800">
+                      Step 04
+                    </span>
+                  </button>
+                )}
+                <button
+                  onClick={() => nav('home')}
+                  className="text-xs font-bold text-indigo-600 hover:underline cursor-pointer flex items-center gap-1"
+                >
+                  ← Return to Dashboard
+                </button>
+              </div>
             </div>
-            <ApprovalCentrePage />
+            <ApprovalCentrePage
+              activeOrg={activeOrg}
+              onRuleActivated={(newRule) => {
+                const nextRules = [newRule, ...rules.filter(r => r.id !== newRule.id)];
+                setRules(nextRules);
+                showToast(`Rule ${newRule.id} compiled into active rulebook`);
+              }}
+              onNavigateStudio={() => nav('policy-intelligence')}
+            />
+          </div>
+        )}
+
+        {/* ────────────────────────────────────────────────────────
+            PAGE 10B: POLICY INTELLIGENCE STUDIO
+        ──────────────────────────────────────────────────────── */}
+        {page === 'policy-intelligence' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-xl font-bold text-slate-900">Policy Intelligence & Conflict Resolution</h1>
+                <p className="text-xs text-slate-500">
+                  Autonomous policy analysis, cross-document conflict detection, and harmonized rule staging
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                {workflowReturnStage && (
+                  <button
+                    onClick={() => navToWorkflowStage(workflowReturnStage)}
+                    className="text-xs font-bold px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 transition-colors cursor-pointer flex items-center gap-1.5"
+                  >
+                    <span>← Return to Governance Workflow</span>
+                    <span className="text-[10px] uppercase font-black px-1.5 py-0.5 rounded bg-indigo-200/60 text-indigo-800">
+                      {workflowReturnStage === 'review' ? 'Step 03' : 'Step 02'}
+                    </span>
+                  </button>
+                )}
+                <button
+                  onClick={() => nav('home')}
+                  className="text-xs font-bold text-indigo-600 hover:underline cursor-pointer flex items-center gap-1"
+                >
+                  ← Return to Dashboard
+                </button>
+              </div>
+            </div>
+            <PolicyIntelligenceStudio
+              activeOrg={activeOrg}
+              onNavigateLifecycle={(stg) => {
+                navToWorkflowStage('review');
+              }}
+            />
           </div>
         )}
 

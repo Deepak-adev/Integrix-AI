@@ -14,6 +14,10 @@ import {
   Calendar,
   Layers,
   Info,
+  Eye,
+  Download,
+  FileSpreadsheet,
+  FileCode,
 } from 'lucide-react';
 import { getRepositoryStats } from '../services/api';
 import {
@@ -26,6 +30,7 @@ import {
   PolicyDocumentItem,
 } from '../services/governanceStorage';
 import { Organisation, PolicyRuleItem, ProductItem, RepositoryStats } from '../types';
+import { DocumentPreviewModal, DocumentPreviewItem } from './DocumentPreviewModal';
 
 interface PolicyRepositoryPageProps {
   activeOrg?: Organisation;
@@ -48,6 +53,7 @@ export const PolicyRepositoryPage: React.FC<PolicyRepositoryPageProps> = ({
   const [activeTab, setActiveTab] = useState<'products' | 'campaigns' | 'rules' | 'policies'>('products');
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [previewDoc, setPreviewDoc] = useState<DocumentPreviewItem | null>(null);
 
   // Dynamic datasets scoped to the active organisation
   const products: ProductItem[] = useMemo(() => {
@@ -378,31 +384,82 @@ export const PolicyRepositoryPage: React.FC<PolicyRepositoryPageProps> = ({
       {/* 4. SOURCES */}
       {activeTab === 'policies' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {filteredPolicies.map((p) => (
-            <div
-              key={p.id}
-              className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3 hover:border-slate-300 transition-colors flex flex-col justify-between"
-            >
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
-                    <FileText className="w-4 h-4" />
+          {filteredPolicies.map((p) => {
+            const ext = p.name.split('.').pop()?.toLowerCase();
+            const sampleDocPath = `/sample-docs/${p.name}`;
+            return (
+              <div
+                key={p.id}
+                className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3 hover:border-indigo-300 transition-all flex flex-col justify-between group"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+                      {ext === 'xlsx' || ext === 'csv' ? (
+                        <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                      ) : ext === 'docx' ? (
+                        <FileText className="w-4 h-4 text-sky-600" />
+                      ) : ext === 'txt' ? (
+                        <FileCode className="w-4 h-4 text-amber-600" />
+                      ) : (
+                        <FileText className="w-4 h-4 text-rose-600" />
+                      )}
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      {p.status}
+                    </span>
                   </div>
-                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    {p.status}
-                  </span>
+                  <h4 className="text-xs font-bold text-slate-900 leading-snug">{p.name}</h4>
+                  {p.description && <p className="text-[11px] text-slate-500 leading-relaxed">{p.description}</p>}
                 </div>
-                <h4 className="text-xs font-bold text-slate-900 leading-snug">{p.name}</h4>
-                {p.description && <p className="text-[11px] text-slate-500 leading-relaxed">{p.description}</p>}
-              </div>
 
-              <div className="flex items-center justify-between text-[11px] text-slate-500 pt-3 border-t border-slate-100 font-mono">
-                <span>{p.id}</span>
-                <span className="text-[10px] uppercase font-bold text-indigo-600">{p.category || 'Policy PDF'}</span>
+                <div className="space-y-3 pt-3 border-t border-slate-100">
+                  <div className="flex items-center justify-between text-[11px] text-slate-500 font-mono">
+                    <span>{p.id}</span>
+                    <span className="text-[10px] uppercase font-bold text-indigo-600">{p.category || 'Source Document'}</span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPreviewDoc({
+                          id: p.id,
+                          filename: p.name,
+                          title: p.name.replace(/\.[^/.]+$/, '').replace(/_/g, ' '),
+                          description: p.description,
+                          fileType: ext === 'xlsx' ? 'Excel Spreadsheet' : ext === 'docx' ? 'Word Document' : ext === 'txt' ? 'Text Document' : 'PDF Document',
+                          path: sampleDocPath,
+                          category: p.category,
+                        })
+                      }
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-2xs transition-all cursor-pointer"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Preview Document</span>
+                    </button>
+                    <a
+                      href={sampleDocPath}
+                      download={p.name}
+                      className="p-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-indigo-600 transition-colors cursor-pointer"
+                      title={`Download ${p.name}`}
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
+      )}
+
+      {/* Document Preview Modal */}
+      {previewDoc && (
+        <DocumentPreviewModal
+          document={previewDoc}
+          onClose={() => setPreviewDoc(null)}
+        />
       )}
     </div>
   );
