@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="nwGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4F46E5" />
+      <stop offset="100%" stop-color="#7C3AED" />
+    </linearGradient>
+    <linearGradient id="nwGrad2" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#6366F1" />
+      <stop offset="100%" stop-color="#4338CA" />
+    </linearGradient>
+    <linearGradient id="nwAccent" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#818CF8" />
+      <stop offset="50%" stop-color="#A78BFA" />
+      <stop offset="100%" stop-color="#C084FC" />
+    </linearGradient>
+    <filter id="nwGlow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#4F46E5" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <!-- Modern Apparel Shield / Crest Silhouette -->
+  <g filter="url(#nwGlow)">
+    <!-- Left Pillar -->
+    <rect x="120" y="110" width="56" height="292" rx="20" fill="url(#nwGrad1)" />
+    
+    <!-- Right Pillar -->
+    <rect x="336" y="110" width="56" height="292" rx="20" fill="url(#nwGrad1)" />
+
+    <!-- Dynamic Diagonal Weave -->
+    <path d="M120 126 C120 114 134 108 144 116 L376 384 C386 394 374 402 368 402 L344 402 C334 402 326 396 320 388 L136 142 C126 130 120 126 120 126 Z" fill="url(#nwGrad2)" />
+
+    <!-- Apex Diamond Jewel / Stylized Thread Needle Crown -->
+    <polygon points="256,48 284,76 256,104 228,76" fill="url(#nwAccent)" />
+
+    <!-- Lower Harmony Diamond -->
+    <polygon points="256,408 280,432 256,456 232,432" fill="url(#nwAccent)" />
+
+    <!-- Subtle Star / Sparkle in Top Right -->
+    <path d="M410 70 Q410 85 395 85 Q410 85 410 100 Q410 85 425 85 Q410 85 410 70 Z" fill="#818CF8" opacity="0.9" />
+  </g>
+</svg>

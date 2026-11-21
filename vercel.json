@@ -1,7 +1,7 @@
 {
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!assets/|ads/|logos/|sample-docs/|.*\\.[\\w]+$).*)",
       "destination": "/index.html"
     }
   ]

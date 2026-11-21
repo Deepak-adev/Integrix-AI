@@ -33,6 +33,31 @@ export const AuditHistoryPage: React.FC<AuditHistoryPageProps> = ({ onNavigate }
         </div>
       </div>
 
+      {/* ── Organisation Compliance Intelligence Proactive Gateway ── */}
+      <div className="rounded-2xl border border-rose-200 bg-gradient-to-r from-rose-50 via-indigo-50 to-white p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+            <ShieldAlert className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-black text-slate-900">Organisation Compliance Intelligence</h3>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-600 text-white">PROACTIVE</span>
+            </div>
+            <p className="text-xs text-slate-600 mt-0.5">
+              Move beyond reactive single-ad logs: view aggregate risk scoring, recurring violation signatures, campaign-wise clearance rates, and stale-audit revalidation.
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => onNavigate('compliance-intelligence')}
+          className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-indigo-900 text-white text-xs font-black shrink-0 transition-all flex items-center gap-2 cursor-pointer shadow-md shadow-slate-900/10"
+        >
+          <span>Open Intelligence Module</span>
+          <ArrowRight className="w-4 h-4" />
+        </button>
+      </div>
+
       {/* ── Empty State / Call to Action ── */}
       <div className="bg-white rounded-xl border border-slate-200 p-12 text-center shadow-sm">
         <div className="w-12 h-12 rounded-xl bg-slate-100 text-slate-500 mx-auto flex items-center justify-center mb-4">

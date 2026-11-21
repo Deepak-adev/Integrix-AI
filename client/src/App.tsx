@@ -77,6 +77,7 @@ import { PolicyRepositoryPage } from './components/PolicyRepositoryPage';
 import { AuditHistoryPage } from './components/AuditHistoryPage';
 import { ApprovalCentrePage } from './components/ApprovalCentrePage';
 import { PolicyIntelligenceStudio } from './components/PolicyIntelligenceStudio';
+import { ComplianceIntelligencePage } from './components/ComplianceIntelligencePage';
 import { SettingsPage } from './components/SettingsPage';
 import { OrgSelectionGateModal } from './components/OrgSelectionGateModal';
 import { LifecycleManager, LifecycleStage } from './components/LifecycleManager';
@@ -138,6 +139,7 @@ export type Page =
   | 'policy-repository'
   | 'approval-centre'
   | 'policy-intelligence'
+  | 'compliance-intelligence'
   | 'settings';
 
 const PRODUCTS: Product[] = DABUR_PRODUCTS;
@@ -1326,7 +1328,7 @@ export const App: React.FC = () => {
                 aria-expanded={activeDropdown === 'governance'}
                 aria-haspopup="true"
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
-                  ['policy-repository', 'rules', 'catalogue', 'approval-centre'].includes(page)
+                  ['policy-repository', 'rules', 'catalogue', 'approval-centre', 'compliance-intelligence'].includes(page)
                     ? 'bg-white text-slate-900 shadow-sm font-extrabold'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
                 }`}
@@ -1424,6 +1426,24 @@ export const App: React.FC = () => {
                         <div className="text-[10px] text-slate-400 font-normal">Review & sign-off queue</div>
                       </div>
                     </button>
+                    <button
+                      onClick={() => {
+                        nav('compliance-intelligence');
+                        closeDropdownImmediately();
+                      }}
+                      className={`w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-bold text-left transition-colors cursor-pointer ${
+                        page === 'compliance-intelligence' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <ShieldAlert className="w-4 h-4 text-rose-600" />
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span>Compliance Intelligence</span>
+                          <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-rose-100 text-rose-700">PROACTIVE</span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-normal">Risk index & revalidation</div>
+                      </div>
+                    </button>
                     <div className="border-t border-slate-100 my-1" />
                     <button
                       onClick={() => {
@@ -1462,7 +1482,7 @@ export const App: React.FC = () => {
                 aria-expanded={activeDropdown === 'insights'}
                 aria-haspopup="true"
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
-                  ['audit-history', 'dashboard'].includes(page)
+                  ['audit-history', 'dashboard', 'compliance-intelligence'].includes(page)
                     ? 'bg-white text-slate-900 shadow-sm font-extrabold'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
                 }`}
@@ -1512,6 +1532,24 @@ export const App: React.FC = () => {
                         <div className="text-[10px] text-slate-400 font-normal">Compliance metrics & KPIs</div>
                       </div>
                     </button>
+                    <button
+                      onClick={() => {
+                        nav('compliance-intelligence');
+                        closeDropdownImmediately();
+                      }}
+                      className={`w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-bold text-left transition-colors cursor-pointer ${
+                        page === 'compliance-intelligence' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <ShieldAlert className="w-4 h-4 text-rose-600" />
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span>Compliance Intelligence</span>
+                          <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-rose-100 text-rose-700">PROACTIVE</span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-normal">Risk scoring & revalidation</div>
+                      </div>
+                    </button>
                     <div className="border-t border-slate-100 my-1" />
                     <button
                       onClick={() => {
@@ -1543,7 +1581,7 @@ export const App: React.FC = () => {
                 <div
                   className="w-5 h-5 rounded-md flex items-center justify-center bg-white border border-slate-200/90 shadow-2xs overflow-hidden shrink-0 p-0.5"
                 >
-                  <img src="/novawear-logo.png" alt="NOVAWEAR" className="w-full h-full object-contain" onError={(e) => { (e.target as any).style.display = 'none'; }} />
+                  <img src="/logos/novawear-logo.svg" alt="NOVAWEAR" className="w-full h-full object-contain" onError={(e) => { (e.target as any).src = '/novawear-logo.png'; }} />
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Org:</span>
@@ -1884,6 +1922,18 @@ export const App: React.FC = () => {
                 </button>
                 <button
                   onClick={() => {
+                    nav('compliance-intelligence');
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg font-bold text-left ${
+                    page === 'compliance-intelligence' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <ShieldAlert className="w-4 h-4 text-rose-600" />
+                  <span>Compliance Intelligence (Proactive)</span>
+                </button>
+                <button
+                  onClick={() => {
                     nav('dashboard');
                     setMobileMenuOpen(false);
                   }}
@@ -2159,6 +2209,13 @@ export const App: React.FC = () => {
                         >
                           <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
                           <span>Inspect Governance Model</span>
+                        </button>
+                        <button
+                          onClick={() => nav('compliance-intelligence')}
+                          className="px-5 py-2.5 rounded-xl border border-rose-200 bg-rose-50/70 hover:bg-rose-100 text-rose-900 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer hover:scale-105 active:scale-95 whitespace-nowrap shrink-0 shadow-2xs"
+                        >
+                          <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
+                          <span>Compliance Intelligence</span>
                         </button>
                       </div>
                     </div>
@@ -4235,6 +4292,24 @@ export const App: React.FC = () => {
               }}
             />
           </div>
+        )}
+
+        {/* ────────────────────────────────────────────────────────
+            PAGE 10C: COMPLIANCE INTELLIGENCE MODULE (PROACTIVE RISK)
+        ──────────────────────────────────────────────────────── */}
+        {page === 'compliance-intelligence' && (
+          <ComplianceIntelligencePage
+            activeOrg={activeOrg}
+            onNavigate={nav}
+            onLaunchAuditForAd={(adCode) => {
+              const foundTest = tests.find((t) => t.adCode === adCode);
+              if (foundTest) {
+                launchDemoAudit(foundTest);
+              } else {
+                nav('audit');
+              }
+            }}
+          />
         )}
 
         {/* ────────────────────────────────────────────────────────
